@@ -650,6 +650,7 @@ int ctx_modify_qp_to_init(
 
   attr.port_num = user_param->ib_port;
   attr.qp_access_flags = IBV_ACCESS_REMOTE_READ;
+  flags |= IBV_QP_ACCESS_FLAGS;
   ret = ibv_modify_qp(qp, &attr, flags);
 
   if (ret) {
