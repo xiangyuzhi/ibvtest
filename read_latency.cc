@@ -1,7 +1,6 @@
 #include "comm.h"
 
 int main(int argc, char *argv[]) {
-
   printf("This is the concise version of perftest.\n");
   int ret_parser, i = 0, rc, error = 1;
   struct report_options report;
@@ -60,11 +59,11 @@ int main(int argc, char *argv[]) {
     return 0;
   }
 
-  MAIN_ALLOC(my_dest, struct pingpong_dest, user_param.num_of_qps,
-             free_rdma_params);
+  MAIN_ALLOC(
+      my_dest, struct pingpong_dest, user_param.num_of_qps, free_rdma_params);
   memset(my_dest, 0, sizeof(struct pingpong_dest) * user_param.num_of_qps);
-  MAIN_ALLOC(rem_dest, struct pingpong_dest, user_param.num_of_qps,
-             free_my_dest);
+  MAIN_ALLOC(
+      rem_dest, struct pingpong_dest, user_param.num_of_qps, free_my_dest);
   memset(rem_dest, 0, sizeof(struct pingpong_dest) * user_param.num_of_qps);
 
   if (alloc_ctx(&ctx, &user_param)) {
@@ -111,7 +110,6 @@ int main(int argc, char *argv[]) {
   user_comm.rdma_params->side = REMOTE;
 
   for (i = 0; i < user_param.num_of_qps; i++) {
-
     if (ctx_hand_shake(&user_comm, &my_dest[i], &rem_dest[i])) {
       fprintf(stderr, " Failed to exchange data between server and clients\n");
       exit(-1);
@@ -124,7 +122,6 @@ int main(int argc, char *argv[]) {
   }
 
   if (user_param.machine == SERVER) {
-
     if (ctx_close_connection(&user_comm, my_dest, rem_dest)) {
       fprintf(stderr, "Failed to close connection between server and client\n");
       goto free_mem;
@@ -136,6 +133,10 @@ int main(int argc, char *argv[]) {
     free(user_comm.rdma_params);
     return SUCCESS;
   }
+
+  printf(RESULT_LINE);
+  printf("%s", RESULT_FMT_LAT);
+  printf(RESULT_EXT);
 
   ctx_set_send_wqes(&ctx, &user_param, rem_dest);
 

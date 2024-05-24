@@ -2,17 +2,29 @@
 #ifndef PARA_H
 #define PARA_H
 
-#include "mem.h"
-#include "utils/get_clock.h"
 #include <getopt.h>
 #include <infiniband/verbs.h>
-#include <iostream>
 #include <math.h>
 #include <rdma/rdma_cma.h>
+
+#include <iostream>
+
+#include "mem.h"
+#include "utils/get_clock.h"
 
 #define RESULT_LINE                                                            \
   "--------------------------------------------------------------------------" \
   "-------------\n"
+#define RESULT_FMT_LAT                                                     \
+  " #bytes #iterations    t_min[usec]    t_max[usec]  t_typical[usec]    " \
+  "t_avg[usec]    t_stdev[usec]   99"                                      \
+  "%"                                                                      \
+  " percentile[usec]   99.9"                                               \
+  "%"                                                                      \
+  " percentile[usec] "
+
+#define RESULT_EXT "\n"
+
 #define OFF (0)
 #define ON (1)
 #define DEF_PORT (18515)
@@ -36,34 +48,34 @@
  * write verb will write in cycle on the buffer. this improves the BW in
  * "Nahalem" systems.
  */
-#define BUFF_SIZE(size, cycle_buffer)                                          \
+#define BUFF_SIZE(size, cycle_buffer) \
   ((size < cycle_buffer) ? (cycle_buffer) : (size))
 
-#define ROUND_UP(value, alignment)                                             \
-  (((value) % (alignment) == 0) ? (value)                                      \
+#define ROUND_UP(value, alignment)        \
+  (((value) % (alignment) == 0) ? (value) \
                                 : ((alignment) * ((value) / (alignment) + 1)))
 
 /* Macro that defines the address where we write in RDMA.
  * If message size is smaller then CACHE_LINE size then we write in CACHE_LINE
  * jumps.
  */
-#define INC(size, cache_line_size)                                             \
-  ((size > cache_line_size) ? ROUND_UP(size, cache_line_size)                  \
+#define INC(size, cache_line_size)                            \
+  ((size > cache_line_size) ? ROUND_UP(size, cache_line_size) \
                             : (cache_line_size))
 
-#define GET_STRING(orig, temp)                                                 \
-  {                                                                            \
-    ALLOCATE(orig, char, (strlen(temp) + 1));                                  \
-    strcpy(orig, temp);                                                        \
+#define GET_STRING(orig, temp)                \
+  {                                           \
+    ALLOCATE(orig, char, (strlen(temp) + 1)); \
+    strcpy(orig, temp);                       \
   }
 
-#define CHECK_VALUE(arg, type, name, not_int_ptr)                              \
-  {                                                                            \
-    arg = (type)strtol(optarg, &not_int_ptr, 0);                               \
-    if (*not_int_ptr != '\0') /*not integer part is not empty*/ {              \
-      fprintf(stderr, " %s argument %s should be %s\n", name, optarg, #type);  \
-      return 1;                                                                \
-    }                                                                          \
+#define CHECK_VALUE(arg, type, name, not_int_ptr)                             \
+  {                                                                           \
+    arg = (type)strtol(optarg, &not_int_ptr, 0);                              \
+    if (*not_int_ptr != '\0') /*not integer part is not empty*/ {             \
+      fprintf(stderr, " %s argument %s should be %s\n", name, optarg, #type); \
+      return 1;                                                               \
+    }                                                                         \
   }
 
 static const char *portStates[] = {"Nop",   "Down", "Init",
@@ -174,7 +186,6 @@ static void init_perftest_params(struct perftest_parameters *user_param) {
 }
 
 int parser(struct perftest_parameters *user_param, char *argv[], int argc) {
-
   int c, size_len;
   char *server_ip = NULL;
   char *client_ip = NULL;
@@ -192,17 +203,16 @@ int parser(struct perftest_parameters *user_param, char *argv[], int argc) {
         {.name = "size", .has_arg = 1, .val = 's'},
         {.name = "iters", .has_arg = 1, .val = 'n'},
         {0}};
-    c = getopt_long(argc, argv, "p:d:i:m:s:n", long_options,
-                    &long_option_index);
-    if (c == -1)
-      break;
+    c = getopt_long(
+        argc, argv, "p:d:i:m:s:n", long_options, &long_option_index);
+    if (c == -1) break;
     switch (c) {
-    case 'p':
-      CHECK_VALUE(user_param->port, int, "Port", not_int_ptr);
-      break;
-    case 'd':
-      GET_STRING(user_param->ib_devname, strdupa(optarg));
-      break;
+      case 'p':
+        CHECK_VALUE(user_param->port, int, "Port", not_int_ptr);
+        break;
+      case 'd':
+        GET_STRING(user_param->ib_devname, strdupa(optarg));
+        break;
     }
   }
 
@@ -218,8 +228,8 @@ int parser(struct perftest_parameters *user_param, char *argv[], int argc) {
   return 0;
 }
 
-struct ibv_context *ctx_open_device(struct ibv_device *ib_dev,
-                                    struct perftest_parameters *user_param) {
+struct ibv_context *ctx_open_device(
+    struct ibv_device *ib_dev, struct perftest_parameters *user_param) {
   struct ibv_context *context;
   context = ibv_open_device(ib_dev);
 
@@ -233,14 +243,13 @@ struct ibv_context *ctx_open_device(struct ibv_device *ib_dev,
 
 const char *link_layer_str(int8_t link_layer) {
   switch (link_layer) {
-
-  case IBV_LINK_LAYER_UNSPECIFIED:
-  case IBV_LINK_LAYER_INFINIBAND:
-    return "IB";
-  case IBV_LINK_LAYER_ETHERNET:
-    return "Ethernet";
-  default:
-    return "Unknown";
+    case IBV_LINK_LAYER_UNSPECIFIED:
+    case IBV_LINK_LAYER_INFINIBAND:
+      return "IB";
+    case IBV_LINK_LAYER_ETHERNET:
+      return "Ethernet";
+    default:
+      return "Unknown";
   }
 }
 
@@ -253,22 +262,21 @@ enum ctx_device ib_dev_name(struct ibv_context *context) {
   }
 
   else if (attr.vendor_id == 5157) {
-
     switch (attr.vendor_part_id >> 12) {
-    case 10:
-    case 4:
-      dev_fname = CHELSIO_T4;
-      break;
-    case 11:
-    case 5:
-      dev_fname = CHELSIO_T5;
-      break;
-    case 6:
-      dev_fname = CHELSIO_T6;
-      break;
-    default:
-      dev_fname = UNKNOWN;
-      break;
+      case 10:
+      case 4:
+        dev_fname = CHELSIO_T4;
+        break;
+      case 11:
+      case 5:
+        dev_fname = CHELSIO_T5;
+        break;
+      case 6:
+        dev_fname = CHELSIO_T6;
+        break;
+      default:
+        dev_fname = UNKNOWN;
+        break;
     }
 
     /* Assuming it's Mellanox HCA or unknown.
@@ -277,286 +285,284 @@ enum ctx_device ib_dev_name(struct ibv_context *context) {
     */
   } else if (attr.vendor_id == 0x8086) {
     switch (attr.vendor_part_id) {
-    case 14289:
-      dev_fname = INTEL_GEN1;
-      break;
-    case 5522:
-      dev_fname = INTEL_GEN2;
-      break;
-    default:
-      dev_fname = INTEL_GEN2;
-      break;
+      case 14289:
+        dev_fname = INTEL_GEN1;
+        break;
+      case 5522:
+        dev_fname = INTEL_GEN2;
+        break;
+      default:
+        dev_fname = INTEL_GEN2;
+        break;
     }
   } else {
-
     // coverity[uninit_use]
     switch (attr.vendor_part_id) {
-    case 4099:
-      dev_fname = CONNECTX3;
-      break;
-    case 4100:
-      dev_fname = CONNECTX3;
-      break;
-    case 4103:
-      dev_fname = CONNECTX3_PRO;
-      break;
-    case 4104:
-      dev_fname = CONNECTX3_PRO;
-      break;
-    case 4113:
-      dev_fname = CONNECTIB;
-      break;
-    case 4115:
-      dev_fname = CONNECTX4;
-      break;
-    case 4116:
-      dev_fname = CONNECTX4;
-      break;
-    case 4117:
-      dev_fname = CONNECTX4LX;
-      break;
-    case 4118:
-      dev_fname = CONNECTX4LX;
-      break;
-    case 4119:
-      dev_fname = CONNECTX5;
-      break;
-    case 4120:
-      dev_fname = CONNECTX5;
-      break;
-    case 4121:
-      dev_fname = CONNECTX5EX;
-      break;
-    case 4122:
-      dev_fname = CONNECTX5EX;
-      break;
-    case 4123:
-      dev_fname = CONNECTX6;
-      break;
-    case 4124:
-      dev_fname = CONNECTX6;
-      break;
-    case 4125:
-      dev_fname = CONNECTX6DX;
-      break;
-    case 4126:
-      dev_fname = MLX5GENVF;
-      break;
-    case 4127:
-      dev_fname = CONNECTX6LX;
-      break;
-    case 4129:
-      dev_fname = CONNECTX7;
-      break;
-    case 4131:
-      dev_fname = CONNECTX8;
-      break;
-    case 41682:
-      dev_fname = BLUEFIELD;
-      break;
-    case 41683:
-      dev_fname = BLUEFIELD;
-      break;
-    case 41686:
-      dev_fname = BLUEFIELD2;
-      break;
-    case 41692:
-      dev_fname = BLUEFIELD3;
-      break;
-    case 26418:
-      dev_fname = CONNECTX2;
-      break;
-    case 26428:
-      dev_fname = CONNECTX2;
-      break;
-    case 26438:
-      dev_fname = CONNECTX2;
-      break;
-    case 26448:
-      dev_fname = CONNECTX2;
-      break;
-    case 26458:
-      dev_fname = CONNECTX2;
-      break;
-    case 26468:
-      dev_fname = CONNECTX2;
-      break;
-    case 26478:
-      dev_fname = CONNECTX2;
-      break;
-    case 25408:
-      dev_fname = CONNECTX;
-      break;
-    case 25418:
-      dev_fname = CONNECTX;
-      break;
-    case 25428:
-      dev_fname = CONNECTX;
-      break;
-    case 25448:
-      dev_fname = CONNECTX;
-      break;
-    case 1824:
-      dev_fname = SKYHAWK;
-      break;
-    case 5684:
-      dev_fname = QLOGIC_E4;
-      break;
-    case 5700:
-      dev_fname = QLOGIC_E4;
-      break;
-    case 5716:
-      dev_fname = QLOGIC_E4;
-      break;
-    case 5718:
-      dev_fname = QLOGIC_E4;
-      break;
-    case 5734:
-      dev_fname = QLOGIC_E4;
-      break;
-    case 32880:
-      dev_fname = QLOGIC_AH;
-      break;
-    case 32881:
-      dev_fname = QLOGIC_AH;
-      break;
-    case 32882:
-      dev_fname = QLOGIC_AH;
-      break;
-    case 32883:
-      dev_fname = QLOGIC_AH;
-      break;
-    case 32912:
-      dev_fname = QLOGIC_AH;
-      break;
-    case 33136:
-      dev_fname = QLOGIC_AHP;
-      break;
-    case 33168:
-      dev_fname = QLOGIC_AHP;
-      break;
-    case 5638:
-      dev_fname = NETXTREME;
-      break;
-    case 5652:
-      dev_fname = NETXTREME;
-      break;
-    case 5824:
-      dev_fname = NETXTREME;
-      break;
-    case 5825:
-      dev_fname = NETXTREME;
-      break;
-    case 5827:
-      dev_fname = NETXTREME;
-      break;
-    case 5839:
-      dev_fname = NETXTREME;
-      break;
-    case 5846:
-      dev_fname = NETXTREME;
-      break;
-    case 5847:
-      dev_fname = NETXTREME;
-      break;
-    case 5848:
-      dev_fname = NETXTREME;
-      break;
-    case 5849:
-      dev_fname = NETXTREME;
-      break;
-    case 5855:
-      dev_fname = NETXTREME;
-      break;
-    case 5858:
-      dev_fname = NETXTREME;
-      break;
-    case 5859:
-      dev_fname = NETXTREME;
-      break;
-    case 5861:
-      dev_fname = NETXTREME;
-      break;
-    case 5867:
-      dev_fname = NETXTREME;
-      break;
-    case 5869:
-      dev_fname = NETXTREME;
-      break;
-    case 5871:
-      dev_fname = NETXTREME;
-      break;
-    case 5872:
-      dev_fname = NETXTREME;
-      break;
-    case 5873:
-      dev_fname = NETXTREME;
-      break;
-    case 5968:
-      dev_fname = NETXTREME;
-      break;
-    case 5984:
-      dev_fname = NETXTREME;
-      break;
-    case 6169:
-      dev_fname = NETXTREME;
-      break;
-    case 55296:
-      dev_fname = NETXTREME;
-      break;
-    case 55298:
-      dev_fname = NETXTREME;
-      break;
-    case 55300:
-      dev_fname = NETXTREME;
-      break;
-    case 61344:
-      dev_fname = EFA;
-      break; /* efa0 */
-    case 61345:
-      dev_fname = EFA;
-      break; /* efa1 */
-    case 61346:
-      dev_fname = EFA;
-      break; /* efa2 */
-    case 4223:
-      dev_fname = ERDMA;
-      break;
-    case 41506:
-      dev_fname = HNS;
-      break;
-    case 41507:
-      dev_fname = HNS;
-      break;
-    case 41508:
-      dev_fname = HNS;
-      break;
-    case 41509:
-      dev_fname = HNS;
-      break;
-    case 41510:
-      dev_fname = HNS;
-      break;
-    case 41512:
-      dev_fname = HNS;
-      break;
-    case 41519:
-      dev_fname = HNS;
-      break;
-    default:
-      dev_fname = UNKNOWN;
+      case 4099:
+        dev_fname = CONNECTX3;
+        break;
+      case 4100:
+        dev_fname = CONNECTX3;
+        break;
+      case 4103:
+        dev_fname = CONNECTX3_PRO;
+        break;
+      case 4104:
+        dev_fname = CONNECTX3_PRO;
+        break;
+      case 4113:
+        dev_fname = CONNECTIB;
+        break;
+      case 4115:
+        dev_fname = CONNECTX4;
+        break;
+      case 4116:
+        dev_fname = CONNECTX4;
+        break;
+      case 4117:
+        dev_fname = CONNECTX4LX;
+        break;
+      case 4118:
+        dev_fname = CONNECTX4LX;
+        break;
+      case 4119:
+        dev_fname = CONNECTX5;
+        break;
+      case 4120:
+        dev_fname = CONNECTX5;
+        break;
+      case 4121:
+        dev_fname = CONNECTX5EX;
+        break;
+      case 4122:
+        dev_fname = CONNECTX5EX;
+        break;
+      case 4123:
+        dev_fname = CONNECTX6;
+        break;
+      case 4124:
+        dev_fname = CONNECTX6;
+        break;
+      case 4125:
+        dev_fname = CONNECTX6DX;
+        break;
+      case 4126:
+        dev_fname = MLX5GENVF;
+        break;
+      case 4127:
+        dev_fname = CONNECTX6LX;
+        break;
+      case 4129:
+        dev_fname = CONNECTX7;
+        break;
+      case 4131:
+        dev_fname = CONNECTX8;
+        break;
+      case 41682:
+        dev_fname = BLUEFIELD;
+        break;
+      case 41683:
+        dev_fname = BLUEFIELD;
+        break;
+      case 41686:
+        dev_fname = BLUEFIELD2;
+        break;
+      case 41692:
+        dev_fname = BLUEFIELD3;
+        break;
+      case 26418:
+        dev_fname = CONNECTX2;
+        break;
+      case 26428:
+        dev_fname = CONNECTX2;
+        break;
+      case 26438:
+        dev_fname = CONNECTX2;
+        break;
+      case 26448:
+        dev_fname = CONNECTX2;
+        break;
+      case 26458:
+        dev_fname = CONNECTX2;
+        break;
+      case 26468:
+        dev_fname = CONNECTX2;
+        break;
+      case 26478:
+        dev_fname = CONNECTX2;
+        break;
+      case 25408:
+        dev_fname = CONNECTX;
+        break;
+      case 25418:
+        dev_fname = CONNECTX;
+        break;
+      case 25428:
+        dev_fname = CONNECTX;
+        break;
+      case 25448:
+        dev_fname = CONNECTX;
+        break;
+      case 1824:
+        dev_fname = SKYHAWK;
+        break;
+      case 5684:
+        dev_fname = QLOGIC_E4;
+        break;
+      case 5700:
+        dev_fname = QLOGIC_E4;
+        break;
+      case 5716:
+        dev_fname = QLOGIC_E4;
+        break;
+      case 5718:
+        dev_fname = QLOGIC_E4;
+        break;
+      case 5734:
+        dev_fname = QLOGIC_E4;
+        break;
+      case 32880:
+        dev_fname = QLOGIC_AH;
+        break;
+      case 32881:
+        dev_fname = QLOGIC_AH;
+        break;
+      case 32882:
+        dev_fname = QLOGIC_AH;
+        break;
+      case 32883:
+        dev_fname = QLOGIC_AH;
+        break;
+      case 32912:
+        dev_fname = QLOGIC_AH;
+        break;
+      case 33136:
+        dev_fname = QLOGIC_AHP;
+        break;
+      case 33168:
+        dev_fname = QLOGIC_AHP;
+        break;
+      case 5638:
+        dev_fname = NETXTREME;
+        break;
+      case 5652:
+        dev_fname = NETXTREME;
+        break;
+      case 5824:
+        dev_fname = NETXTREME;
+        break;
+      case 5825:
+        dev_fname = NETXTREME;
+        break;
+      case 5827:
+        dev_fname = NETXTREME;
+        break;
+      case 5839:
+        dev_fname = NETXTREME;
+        break;
+      case 5846:
+        dev_fname = NETXTREME;
+        break;
+      case 5847:
+        dev_fname = NETXTREME;
+        break;
+      case 5848:
+        dev_fname = NETXTREME;
+        break;
+      case 5849:
+        dev_fname = NETXTREME;
+        break;
+      case 5855:
+        dev_fname = NETXTREME;
+        break;
+      case 5858:
+        dev_fname = NETXTREME;
+        break;
+      case 5859:
+        dev_fname = NETXTREME;
+        break;
+      case 5861:
+        dev_fname = NETXTREME;
+        break;
+      case 5867:
+        dev_fname = NETXTREME;
+        break;
+      case 5869:
+        dev_fname = NETXTREME;
+        break;
+      case 5871:
+        dev_fname = NETXTREME;
+        break;
+      case 5872:
+        dev_fname = NETXTREME;
+        break;
+      case 5873:
+        dev_fname = NETXTREME;
+        break;
+      case 5968:
+        dev_fname = NETXTREME;
+        break;
+      case 5984:
+        dev_fname = NETXTREME;
+        break;
+      case 6169:
+        dev_fname = NETXTREME;
+        break;
+      case 55296:
+        dev_fname = NETXTREME;
+        break;
+      case 55298:
+        dev_fname = NETXTREME;
+        break;
+      case 55300:
+        dev_fname = NETXTREME;
+        break;
+      case 61344:
+        dev_fname = EFA;
+        break; /* efa0 */
+      case 61345:
+        dev_fname = EFA;
+        break; /* efa1 */
+      case 61346:
+        dev_fname = EFA;
+        break; /* efa2 */
+      case 4223:
+        dev_fname = ERDMA;
+        break;
+      case 41506:
+        dev_fname = HNS;
+        break;
+      case 41507:
+        dev_fname = HNS;
+        break;
+      case 41508:
+        dev_fname = HNS;
+        break;
+      case 41509:
+        dev_fname = HNS;
+        break;
+      case 41510:
+        dev_fname = HNS;
+        break;
+      case 41512:
+        dev_fname = HNS;
+        break;
+      case 41519:
+        dev_fname = HNS;
+        break;
+      default:
+        dev_fname = UNKNOWN;
     }
   }
 
   return dev_fname;
 }
 
-static void ctx_set_max_inline(struct ibv_context *context,
-                               struct perftest_parameters *user_param) {
+static void ctx_set_max_inline(
+    struct ibv_context *context, struct perftest_parameters *user_param) {
   enum ctx_device current_dev = ib_dev_name(context);
 
   if (user_param->inline_size == DEF_INLINE) {
-
     user_param->inline_size = 0;
     if (current_dev == NETXTREME)
       user_param->inline_size = 96;
@@ -577,8 +583,8 @@ static void ctx_set_max_inline(struct ibv_context *context,
   return;
 }
 
-static int get_device_max_reads(struct ibv_context *context,
-                                struct perftest_parameters *user_param) {
+static int get_device_max_reads(
+    struct ibv_context *context, struct perftest_parameters *user_param) {
   struct ibv_device_attr attr;
   int max_reads = 0;
 
@@ -589,8 +595,8 @@ static int get_device_max_reads(struct ibv_context *context,
   return max_reads;
 }
 
-static int ctx_set_out_reads(struct ibv_context *context,
-                             struct perftest_parameters *user_param) {
+static int ctx_set_out_reads(
+    struct ibv_context *context, struct perftest_parameters *user_param) {
   int max_reads = 0;
   int num_user_reads = user_param->out_reads;
 
@@ -598,8 +604,8 @@ static int ctx_set_out_reads(struct ibv_context *context,
 
   if (num_user_reads > max_reads) {
     printf(RESULT_LINE);
-    fprintf(stderr, " Number of outstanding reads is above max = %d\n",
-            max_reads);
+    fprintf(
+        stderr, " Number of outstanding reads is above max = %d\n", max_reads);
     fprintf(stderr, " Changing to that max value\n");
     num_user_reads = max_reads;
   } else if (num_user_reads <= 0) {
@@ -609,8 +615,8 @@ static int ctx_set_out_reads(struct ibv_context *context,
   return num_user_reads;
 }
 
-static int set_link_layer(struct ibv_context *context,
-                          struct perftest_parameters *params) {
+static int set_link_layer(
+    struct ibv_context *context, struct perftest_parameters *params) {
   struct ibv_port_attr port_attr;
   int8_t curr_link = params->link_type;
 
@@ -625,8 +631,9 @@ static int set_link_layer(struct ibv_context *context,
   }
 
   if (port_attr.state != IBV_PORT_ACTIVE) {
-    fprintf(stderr, " Port number %d state is %s\n", params->ib_port,
-            portStates[port_attr.state]);
+    fprintf(
+        stderr, " Port number %d state is %s\n", params->ib_port,
+        portStates[port_attr.state]);
     return FAILURE;
   }
 
@@ -645,9 +652,9 @@ static int ctx_chk_pkey_index(struct ibv_context *context, int pkey_idx) {
     // coverity[uninit_use]
     if (pkey_idx > attr.max_pkeys - 1) {
       printf(RESULT_LINE);
-      fprintf(stderr,
-              " Specified PKey Index, %i, greater than allowed max, %i\n",
-              pkey_idx, attr.max_pkeys - 1);
+      fprintf(
+          stderr, " Specified PKey Index, %i, greater than allowed max, %i\n",
+          pkey_idx, attr.max_pkeys - 1);
       fprintf(stderr, " Changing to 0\n");
       idx = 0;
     } else
@@ -660,8 +667,8 @@ static int ctx_chk_pkey_index(struct ibv_context *context, int pkey_idx) {
   return idx;
 }
 
-int check_link(struct ibv_context *context,
-               struct perftest_parameters *user_param) {
+int check_link(
+    struct ibv_context *context, struct perftest_parameters *user_param) {
   user_param->transport_type = context->device->transport_type;
   if (set_link_layer(context, user_param) == FAILURE) {
     fprintf(stderr, " Couldn't set the link layer\n");
@@ -688,10 +695,8 @@ int check_link(struct ibv_context *context,
 static int cycles_compare(const void *aptr, const void *bptr) {
   const cycles_t *a = (cycles_t *)aptr;
   const cycles_t *b = (cycles_t *)bptr;
-  if (*a < *b)
-    return -1;
-  if (*a > *b)
-    return 1;
+  if (*a < *b) return -1;
+  if (*a > *b) return 1;
 
   return 0;
 }
@@ -706,7 +711,6 @@ static inline cycles_t get_median(int n, cycles_t *delta) {
 
 #define LAT_MEASURE_TAIL (2)
 void print_report_lat(struct perftest_parameters *user_param) {
-
   int i;
   int rtt_factor;
   double cycles_to_units, cycles_rtt_quotient;

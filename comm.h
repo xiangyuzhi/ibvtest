@@ -13,17 +13,16 @@
   "%04x:%04x:%06x:%06x:%08x:%016llx:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%" \
   "02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%08x:"
 
-#define MAIN_ALLOC(var, type, size, label)                                     \
-  {                                                                            \
-    if ((var = (type *)malloc(sizeof(type) * (size))) == NULL) {               \
-      fprintf(stderr, " Cannot Allocate\n");                                   \
-      goto label;                                                              \
-    }                                                                          \
+#define MAIN_ALLOC(var, type, size, label)                       \
+  {                                                              \
+    if ((var = (type *)malloc(sizeof(type) * (size))) == NULL) { \
+      fprintf(stderr, " Cannot Allocate\n");                     \
+      goto label;                                                \
+    }                                                            \
   }
 
-int create_comm_struct(struct perftest_comm *comm,
-                       struct perftest_parameters *user_param) {
-
+int create_comm_struct(
+    struct perftest_comm *comm, struct perftest_parameters *user_param) {
   MAIN_ALLOC(comm->rdma_params, struct perftest_parameters, 1, return_error);
   memset(comm->rdma_params, 0, sizeof(struct perftest_parameters));
 
@@ -51,9 +50,9 @@ static inline int ipv6_addr_v4mapped(const struct in6_addr *a) {
           ((a->s6_addr32[1] | (a->s6_addr32[2] ^ htonl(0x0000ffff))) == 0UL));
 }
 
-static int get_best_gid_index(struct pingpong_context *ctx,
-                              struct perftest_parameters *user_param,
-                              struct ibv_port_attr *attr, int port) {
+static int get_best_gid_index(
+    struct pingpong_context *ctx, struct perftest_parameters *user_param,
+    struct ibv_port_attr *attr, int port) {
   int gid_index = 0, i;
   union ibv_gid temp_gid, temp_gid_rival;
   int is_ipv4, is_ipv4_rival;
@@ -70,8 +69,7 @@ static int get_best_gid_index(struct pingpong_context *ctx,
     is_ipv4 = ipv6_addr_v4mapped((struct in6_addr *)temp_gid.raw);
     is_ipv4_rival = ipv6_addr_v4mapped((struct in6_addr *)temp_gid_rival.raw);
 
-    if (is_ipv4_rival && !is_ipv4)
-      gid_index = i;
+    if (is_ipv4_rival && !is_ipv4) gid_index = i;
   }
   return gid_index;
 }
@@ -79,16 +77,16 @@ static int get_best_gid_index(struct pingpong_context *ctx,
 uint16_t ctx_get_local_lid(struct ibv_context *context, int port) {
   struct ibv_port_attr attr;
 
-  if (ibv_query_port(context, port, &attr))
-    return 0;
+  if (ibv_query_port(context, port, &attr)) return 0;
 
   // coverity[uninit_use]
   return attr.lid;
 }
 
-int set_up_connection(struct pingpong_context *ctx,
-                      struct perftest_parameters *user_param,
-                      struct pingpong_dest *my_dest) {
+int set_up_connection(
+    struct pingpong_context *ctx, struct perftest_parameters *user_param,
+    struct pingpong_dest *my_dest) {
+  printf("set_up_connection\n");
   int num_of_qps = user_param->num_of_qps;
   int num_of_qps_per_port = user_param->num_of_qps / 2;
   int i;
@@ -99,20 +97,18 @@ int set_up_connection(struct pingpong_context *ctx,
   srand48(getpid() * time(NULL));
 
   if (user_param->gid_index != -1) {
-    if (ibv_query_port(ctx->context, user_param->ib_port, &attr))
-      return 0;
+    if (ibv_query_port(ctx->context, user_param->ib_port, &attr)) return 0;
 
     user_param->gid_index =
         get_best_gid_index(ctx, user_param, &attr, user_param->ib_port);
-    if (user_param->gid_index < 0)
-      return -1;
-    if (ibv_query_gid(ctx->context, user_param->ib_port, user_param->gid_index,
-                      &temp_gid))
+    if (user_param->gid_index < 0) return -1;
+    if (ibv_query_gid(
+            ctx->context, user_param->ib_port, user_param->gid_index,
+            &temp_gid))
       return -1;
   }
 
   for (i = 0; i < user_param->num_of_qps; i++) {
-
     /*single-port case*/
     my_dest[i].lid = ctx_get_local_lid(ctx->context, user_param->ib_port);
     my_dest[i].gid_index = user_param->gid_index;
@@ -128,15 +124,16 @@ int set_up_connection(struct pingpong_context *ctx,
         (user_param->num_of_qps + i) * BUFF_SIZE(ctx->size, ctx->cycle_buffer);
 
     memcpy(my_dest[i].gid.raw, temp_gid.raw, 16);
+
+    printf("mydest qpn %d\n", my_dest[i].qpn);
   }
 
   return 0;
 }
 
-static int ethernet_read_keys(struct pingpong_dest *rem_dest,
-                              struct perftest_comm *comm) {
+static int ethernet_read_keys(
+    struct pingpong_dest *rem_dest, struct perftest_comm *comm) {
   if (rem_dest->gid_index == -1) {
-
     int parsed;
     char msg[KEY_MSG_SIZE];
 
@@ -145,11 +142,11 @@ static int ethernet_read_keys(struct pingpong_dest *rem_dest,
       return 1;
     }
 
-    parsed =
-        sscanf(msg, KEY_PRINT_FMT, (unsigned int *)&rem_dest->lid,
-               (unsigned int *)&rem_dest->out_reads,
-               (unsigned int *)&rem_dest->qpn, (unsigned int *)&rem_dest->psn,
-               &rem_dest->rkey, &rem_dest->vaddr, &rem_dest->srqn);
+    parsed = sscanf(
+        msg, KEY_PRINT_FMT, (unsigned int *)&rem_dest->lid,
+        (unsigned int *)&rem_dest->out_reads, (unsigned int *)&rem_dest->qpn,
+        (unsigned int *)&rem_dest->psn, &rem_dest->rkey, &rem_dest->vaddr,
+        &rem_dest->srqn);
 
     if (parsed != 7) {
       // coverity[string_null]
@@ -158,7 +155,6 @@ static int ethernet_read_keys(struct pingpong_dest *rem_dest,
     }
 
   } else {
-
     char msg[KEY_MSG_SIZE_GID];
     char *pstr = msg, *term;
     char tmp[120];
@@ -229,14 +225,14 @@ static int ethernet_read_keys(struct pingpong_dest *rem_dest,
   return 0;
 }
 
-static int ethernet_write_keys(struct pingpong_dest *my_dest,
-                               struct perftest_comm *comm) {
+static int ethernet_write_keys(
+    struct pingpong_dest *my_dest, struct perftest_comm *comm) {
   if (my_dest->gid_index == -1) {
-
     char msg[KEY_MSG_SIZE];
 
-    sprintf(msg, KEY_PRINT_FMT, my_dest->lid, my_dest->out_reads, my_dest->qpn,
-            my_dest->psn, my_dest->rkey, my_dest->vaddr, my_dest->srqn);
+    sprintf(
+        msg, KEY_PRINT_FMT, my_dest->lid, my_dest->out_reads, my_dest->qpn,
+        my_dest->psn, my_dest->rkey, my_dest->vaddr, my_dest->srqn);
 
     if (write(comm->rdma_params->sockfd, msg, sizeof msg) != sizeof msg) {
       perror("client write");
@@ -246,14 +242,15 @@ static int ethernet_write_keys(struct pingpong_dest *my_dest,
 
   } else {
     char msg[KEY_MSG_SIZE_GID];
-    sprintf(msg, KEY_PRINT_FMT_GID, my_dest->lid, my_dest->out_reads,
-            my_dest->qpn, my_dest->psn, my_dest->rkey, my_dest->vaddr,
-            my_dest->gid.raw[0], my_dest->gid.raw[1], my_dest->gid.raw[2],
-            my_dest->gid.raw[3], my_dest->gid.raw[4], my_dest->gid.raw[5],
-            my_dest->gid.raw[6], my_dest->gid.raw[7], my_dest->gid.raw[8],
-            my_dest->gid.raw[9], my_dest->gid.raw[10], my_dest->gid.raw[11],
-            my_dest->gid.raw[12], my_dest->gid.raw[13], my_dest->gid.raw[14],
-            my_dest->gid.raw[15], my_dest->srqn);
+    sprintf(
+        msg, KEY_PRINT_FMT_GID, my_dest->lid, my_dest->out_reads, my_dest->qpn,
+        my_dest->psn, my_dest->rkey, my_dest->vaddr, my_dest->gid.raw[0],
+        my_dest->gid.raw[1], my_dest->gid.raw[2], my_dest->gid.raw[3],
+        my_dest->gid.raw[4], my_dest->gid.raw[5], my_dest->gid.raw[6],
+        my_dest->gid.raw[7], my_dest->gid.raw[8], my_dest->gid.raw[9],
+        my_dest->gid.raw[10], my_dest->gid.raw[11], my_dest->gid.raw[12],
+        my_dest->gid.raw[13], my_dest->gid.raw[14], my_dest->gid.raw[15],
+        my_dest->srqn);
 
     if (write(comm->rdma_params->sockfd, msg, sizeof msg) != sizeof msg) {
       perror("client write");
@@ -265,8 +262,10 @@ static int ethernet_write_keys(struct pingpong_dest *my_dest,
   return 0;
 }
 
-int ctx_hand_shake(struct perftest_comm *comm, struct pingpong_dest *my_dest,
-                   struct pingpong_dest *rem_dest) {
+int ctx_hand_shake(
+    struct perftest_comm *comm, struct pingpong_dest *my_dest,
+    struct pingpong_dest *rem_dest) {
+  printf("ctx_hand_shake\n");
   int (*read_func_ptr)(struct pingpong_dest *, struct perftest_comm *);
   int (*write_func_ptr)(struct pingpong_dest *, struct perftest_comm *);
 
@@ -286,7 +285,6 @@ int ctx_hand_shake(struct perftest_comm *comm, struct pingpong_dest *my_dest,
 
     /*Server side will wait for the client side to reach the write function.*/
   } else {
-
     if ((*read_func_ptr)(rem_dest, comm)) {
       fprintf(stderr, " Unable to read to socket/rdma_cm\n");
       return 1;
@@ -300,9 +298,9 @@ int ctx_hand_shake(struct perftest_comm *comm, struct pingpong_dest *my_dest,
   return 0;
 }
 
-int ctx_close_connection(struct perftest_comm *comm,
-                         struct pingpong_dest *my_dest,
-                         struct pingpong_dest *rem_dest) {
+int ctx_close_connection(
+    struct perftest_comm *comm, struct pingpong_dest *my_dest,
+    struct pingpong_dest *rem_dest) {
   /*Signal client is finished.*/
   if (ctx_hand_shake(comm, my_dest, rem_dest)) {
     return 1;

@@ -1,28 +1,30 @@
 #ifndef READ_H
 #define READ_H
 
-#include "para.h"
-#include "utils/get_clock.h"
 #include <netdb.h>
 #include <netinet/in.h>
 #include <stdlib.h>
 #include <sys/socket.h>
 
+#include "para.h"
+#include "utils/get_clock.h"
+
 #define MAX_SEND_SGE (1)
-#define MAIN_ALLOC(var, type, size, label)                                     \
-  {                                                                            \
-    if ((var = (type *)malloc(sizeof(type) * (size))) == NULL) {               \
-      fprintf(stderr, " Cannot Allocate\n");                                   \
-      goto label;                                                              \
-    }                                                                          \
+#define MAIN_ALLOC(var, type, size, label)                       \
+  {                                                              \
+    if ((var = (type *)malloc(sizeof(type) * (size))) == NULL) { \
+      fprintf(stderr, " Cannot Allocate\n");                     \
+      goto label;                                                \
+    }                                                            \
   }
 
-#define NOTIFY_COMP_ERROR_SEND(wc, scnt, ccnt)                                 \
-  {                                                                            \
-    fprintf(stderr, " Completion with error at client\n");                     \
-    fprintf(stderr, " Failed status %d: wr_id %d syndrom 0x%x\n", wc.status,   \
-            (int)wc.wr_id, wc.vendor_err);                                     \
-    fprintf(stderr, "scnt=%lu, ccnt=%lu\n", scnt, ccnt);                       \
+#define NOTIFY_COMP_ERROR_SEND(wc, scnt, ccnt)                           \
+  {                                                                      \
+    fprintf(stderr, " Completion with error at client\n");               \
+    fprintf(                                                             \
+        stderr, " Failed status %d: wr_id %d syndrom 0x%x\n", wc.status, \
+        (int)wc.wr_id, wc.vendor_err);                                   \
+    fprintf(stderr, "scnt=%lu, ccnt=%lu\n", scnt, ccnt);                 \
   }
 
 struct report_options {
@@ -147,8 +149,7 @@ struct ibv_device *ctx_find_dev(char **ib_devname) {
     }
   } else {
     for (; (ib_dev = *dev_list); ++dev_list)
-      if (!strcmp(ibv_get_device_name(ib_dev), *ib_devname))
-        break;
+      if (!strcmp(ibv_get_device_name(ib_dev), *ib_devname)) break;
     if (!ib_dev) {
       fprintf(stderr, "IB device %s not found\n", *ib_devname);
       return NULL;
@@ -159,8 +160,9 @@ struct ibv_device *ctx_find_dev(char **ib_devname) {
   return ib_dev;
 }
 
-int check_add_port(char **service, int port, const char *servername,
-                   struct addrinfo *hints, struct addrinfo **res) {
+int check_add_port(
+    char **service, int port, const char *servername, struct addrinfo *hints,
+    struct addrinfo **res) {
   int number;
   if (asprintf(service, "%d", port) < 0) {
     return FAILURE;
@@ -168,8 +170,9 @@ int check_add_port(char **service, int port, const char *servername,
   number = getaddrinfo(servername, *service, hints, res);
   free(*service);
   if (number < 0) {
-    fprintf(stderr, "%s for ai_family: %x service: %s port: %d\n",
-            gai_strerror(number), hints->ai_family, servername, port);
+    fprintf(
+        stderr, "%s for ai_family: %x service: %s port: %d\n",
+        gai_strerror(number), hints->ai_family, servername, port);
     return FAILURE;
   }
   return SUCCESS;
@@ -192,8 +195,9 @@ static int ethernet_client_connect(struct perftest_comm *comm) {
   //   source.sin_addr.s_addr = inet_addr(comm->rdma_params->source_ip);
   // }
 
-  if (check_add_port(&service, comm->rdma_params->port,
-                     comm->rdma_params->servername, &hints, &res)) {
+  if (check_add_port(
+          &service, comm->rdma_params->port, comm->rdma_params->servername,
+          &hints, &res)) {
     fprintf(stderr, "Problem in resolving basic address and port\n");
     return 1;
   }
@@ -208,8 +212,7 @@ static int ethernet_client_connect(struct perftest_comm *comm) {
       //     return 1;
       //   }
       // }
-      if (!connect(sockfd, t->ai_addr, t->ai_addrlen))
-        break;
+      if (!connect(sockfd, t->ai_addr, t->ai_addrlen)) break;
       close(sockfd);
       sockfd = -1;
     }
@@ -218,8 +221,9 @@ static int ethernet_client_connect(struct perftest_comm *comm) {
   freeaddrinfo(res);
 
   if (sockfd < 0) {
-    fprintf(stderr, "Couldn't connect to %s:%d\n",
-            comm->rdma_params->servername, comm->rdma_params->port);
+    fprintf(
+        stderr, "Couldn't connect to %s:%d\n", comm->rdma_params->servername,
+        comm->rdma_params->port);
     return 1;
   }
 
@@ -248,16 +252,14 @@ static int ethernet_server_connect(struct perftest_comm *comm) {
   }
 
   for (t = res; t; t = t->ai_next) {
-    if (t->ai_family != comm->rdma_params->ai_family)
-      continue;
+    if (t->ai_family != comm->rdma_params->ai_family) continue;
 
     sockfd = socket(t->ai_family, t->ai_socktype, t->ai_protocol);
 
     if (sockfd >= 0) {
       n = 1;
       setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &n, sizeof n);
-      if (!bind(sockfd, t->ai_addr, t->ai_addrlen))
-        break;
+      if (!bind(sockfd, t->ai_addr, t->ai_addrlen)) break;
       close(sockfd);
       sockfd = -1;
     }
@@ -284,7 +286,7 @@ static int ethernet_server_connect(struct perftest_comm *comm) {
 }
 
 int establish_connection(struct perftest_comm *comm) {
-
+  printf("establish_connection\n");
   int (*ptr)(struct perftest_comm *);
   ptr = comm->rdma_params->servername ? &ethernet_client_connect
                                       : &ethernet_server_connect;
@@ -296,8 +298,9 @@ int establish_connection(struct perftest_comm *comm) {
   return 0;
 }
 
-void exchange_versions(struct perftest_comm *user_comm,
-                       struct perftest_parameters *user_param) {
+void exchange_versions(
+    struct perftest_comm *user_comm, struct perftest_parameters *user_param) {
+  printf("exchange_versions\n");
   // if (ctx_xchg_data(user_comm, (void *)(&user_param->version),
   //                   (void *)(&user_param->rem_version),
   //                   sizeof(user_param->rem_version))) {
@@ -306,14 +309,13 @@ void exchange_versions(struct perftest_comm *user_comm,
   // }
 }
 
-void dealloc_comm_struct(struct perftest_comm *comm,
-                         struct perftest_parameters *user_param) {
-
+void dealloc_comm_struct(
+    struct perftest_comm *comm, struct perftest_parameters *user_param) {
   free(comm->rdma_params);
 }
 
-enum ibv_mtu set_mtu(struct ibv_context *context, uint8_t ib_port,
-                     int user_mtu) {
+enum ibv_mtu set_mtu(
+    struct ibv_context *context, uint8_t ib_port, int user_mtu) {
   struct ibv_port_attr port_attr;
   enum ibv_mtu curr_mtu;
 
@@ -335,28 +337,29 @@ enum ibv_mtu set_mtu(struct ibv_context *context, uint8_t ib_port,
 
   else {
     switch (user_mtu) {
-    case 256:
-      curr_mtu = IBV_MTU_256;
-      break;
-    case 512:
-      curr_mtu = IBV_MTU_512;
-      break;
-    case 1024:
-      curr_mtu = IBV_MTU_1024;
-      break;
-    case 2048:
-      curr_mtu = IBV_MTU_2048;
-      break;
-    case 4096:
-      curr_mtu = IBV_MTU_4096;
-      break;
-    default:
-      fprintf(stderr, " Invalid MTU - %d \n", user_mtu);
-      fprintf(stderr, " Please choose mtu from {256,512,1024,2048,4096}\n");
-      // coverity[uninit_use_in_call]
-      fprintf(stderr, " Will run with the port active mtu - %d\n",
-              port_attr.active_mtu);
-      curr_mtu = port_attr.active_mtu;
+      case 256:
+        curr_mtu = IBV_MTU_256;
+        break;
+      case 512:
+        curr_mtu = IBV_MTU_512;
+        break;
+      case 1024:
+        curr_mtu = IBV_MTU_1024;
+        break;
+      case 2048:
+        curr_mtu = IBV_MTU_2048;
+        break;
+      case 4096:
+        curr_mtu = IBV_MTU_4096;
+        break;
+      default:
+        fprintf(stderr, " Invalid MTU - %d \n", user_mtu);
+        fprintf(stderr, " Please choose mtu from {256,512,1024,2048,4096}\n");
+        // coverity[uninit_use_in_call]
+        fprintf(
+            stderr, " Will run with the port active mtu - %d\n",
+            port_attr.active_mtu);
+        curr_mtu = port_attr.active_mtu;
     }
 
     if (curr_mtu > port_attr.active_mtu) {
@@ -368,9 +371,10 @@ enum ibv_mtu set_mtu(struct ibv_context *context, uint8_t ib_port,
   return curr_mtu;
 }
 
-int check_mtu(struct ibv_context *context,
-              struct perftest_parameters *user_param,
-              struct perftest_comm *user_comm) {
+int check_mtu(
+    struct ibv_context *context, struct perftest_parameters *user_param,
+    struct perftest_comm *user_comm) {
+  printf("check_mtu\n");
   int curr_mtu, rem_mtu;
   char cur[sizeof(int)];
   char rem[sizeof(int)];
@@ -381,26 +385,18 @@ int check_mtu(struct ibv_context *context,
   return SUCCESS;
 }
 
-void dealloc_ctx(struct pingpong_context *ctx,
-                 struct perftest_parameters *user_param) {
+void dealloc_ctx(
+    struct pingpong_context *ctx, struct perftest_parameters *user_param) {
+  if (user_param->port_by_qp != NULL) free(user_param->port_by_qp);
 
-  if (user_param->port_by_qp != NULL)
-    free(user_param->port_by_qp);
+  if (ctx->qp != NULL) free(ctx->qp);
 
-  if (ctx->qp != NULL)
-    free(ctx->qp);
+  if (ctx->mr != NULL) free(ctx->mr);
+  if (ctx->buf != NULL) free(ctx->buf);
 
-  if (ctx->mr != NULL)
-    free(ctx->mr);
-  if (ctx->buf != NULL)
-    free(ctx->buf);
-
-  if (ctx->sge_list != NULL)
-    free(ctx->sge_list);
-  if (ctx->wr != NULL)
-    free(ctx->wr);
-  if (ctx->rem_qpn != NULL)
-    free(ctx->rem_qpn);
+  if (ctx->sge_list != NULL) free(ctx->sge_list);
+  if (ctx->wr != NULL) free(ctx->wr);
+  if (ctx->rem_qpn != NULL) free(ctx->rem_qpn);
 
   if (ctx->memory != NULL) {
     ctx->memory = NULL;
@@ -408,17 +404,17 @@ void dealloc_ctx(struct pingpong_context *ctx,
 }
 
 /* Macro for allocating in alloc_ctx function */
-#define ALLOC(var, type, size)                                                 \
-  {                                                                            \
-    if ((var = (type *)malloc(sizeof(type) * (size))) == NULL) {               \
-      fprintf(stderr, " Cannot Allocate\n");                                   \
-      dealloc_ctx(ctx, user_param);                                            \
-      return 1;                                                                \
-    }                                                                          \
+#define ALLOC(var, type, size)                                   \
+  {                                                              \
+    if ((var = (type *)malloc(sizeof(type) * (size))) == NULL) { \
+      fprintf(stderr, " Cannot Allocate\n");                     \
+      dealloc_ctx(ctx, user_param);                              \
+      return 1;                                                  \
+    }                                                            \
   }
 
-int alloc_ctx(struct pingpong_context *ctx,
-              struct perftest_parameters *user_param) {
+int alloc_ctx(
+    struct pingpong_context *ctx, struct perftest_parameters *user_param) {
   uint64_t tarr_size;
   int num_of_qps_factor;
   ctx->cycle_buffer = user_param->cycle_buffer;
@@ -437,13 +433,14 @@ int alloc_ctx(struct pingpong_context *ctx,
   ALLOC(ctx->buf, void *, user_param->num_of_qps);
 
   if (user_param->machine == CLIENT || true) {
-
-    ALLOC(ctx->sge_list, struct ibv_sge,
-          user_param->num_of_qps * user_param->post_list);
-    ALLOC(ctx->wr, struct ibv_send_wr,
-          user_param->num_of_qps * user_param->post_list);
+    ALLOC(
+        ctx->sge_list, struct ibv_sge,
+        user_param->num_of_qps * user_param->post_list);
+    ALLOC(
+        ctx->wr, struct ibv_send_wr,
+        user_param->num_of_qps * user_param->post_list);
     ALLOC(ctx->rem_qpn, uint32_t, user_param->num_of_qps);
-    ALLOC(ctx->ah, struct ibv_ah *, user_param->num_of_qps);
+    // ALLOC(ctx->ah, struct ibv_ah *, user_param->num_of_qps);
   }
 
   ctx->size = user_param->size;
@@ -462,13 +459,14 @@ int alloc_ctx(struct pingpong_context *ctx,
   ctx->flow_buff_size = ctx->send_qp_buff_size / user_param->flows;
   user_param->buff_size = ctx->buff_size;
 
-  ctx->memory = user_param->memory_create(user_param); // need fix
+  ctx->memory = user_param->memory_create(user_param);  // need fix
 
   return SUCCESS;
 }
 
-int create_single_mr(struct pingpong_context *ctx,
-                     struct perftest_parameters *user_param, int qp_index) {
+int create_single_mr(
+    struct pingpong_context *ctx, struct perftest_parameters *user_param,
+    int qp_index) {
   int flags = IBV_ACCESS_LOCAL_WRITE;
   bool can_init_mem = true;
   int dmabuf_fd = 0;
@@ -477,10 +475,10 @@ int create_single_mr(struct pingpong_context *ctx,
   if (ctx->is_contig_supported == SUCCESS) {
     ctx->buf[qp_index] = NULL;
     flags |= (1 << 5);
-  } else if (ctx->memory->allocate_buffer(ctx->memory, user_param->cycle_buffer,
-                                          ctx->buff_size, &dmabuf_fd,
-                                          &dmabuf_offset, &ctx->buf[qp_index],
-                                          &can_init_mem)) {
+  } else if (ctx->memory->allocate_buffer(
+                 ctx->memory, user_param->cycle_buffer, ctx->buff_size,
+                 &dmabuf_fd, &dmabuf_offset, &ctx->buf[qp_index],
+                 &can_init_mem)) {
     return FAILURE;
   }
 
@@ -512,8 +510,8 @@ int create_single_mr(struct pingpong_context *ctx,
   return SUCCESS;
 }
 
-int create_mr(struct pingpong_context *ctx,
-              struct perftest_parameters *user_param) {
+int create_mr(
+    struct pingpong_context *ctx, struct perftest_parameters *user_param) {
   int i;
   int mr_index = 0;
 
@@ -534,18 +532,17 @@ int create_mr(struct pingpong_context *ctx,
   return 0;
 
 destroy_mr:
-  for (i = 0; i < mr_index; i++)
-    ibv_dereg_mr(ctx->mr[i]);
+  for (i = 0; i < mr_index; i++) ibv_dereg_mr(ctx->mr[i]);
 
   return FAILURE;
 }
 
-int create_reg_cqs(struct pingpong_context *ctx,
-                   struct perftest_parameters *user_param, int tx_buffer_depth,
-                   int need_recv_cq) {
-  ctx->send_cq =
-      ibv_create_cq(ctx->context, tx_buffer_depth * user_param->num_of_qps,
-                    NULL, ctx->send_channel, 0);
+int create_reg_cqs(
+    struct pingpong_context *ctx, struct perftest_parameters *user_param,
+    int tx_buffer_depth, int need_recv_cq) {
+  ctx->send_cq = ibv_create_cq(
+      ctx->context, tx_buffer_depth * user_param->num_of_qps, NULL,
+      ctx->send_channel, 0);
   if (!ctx->send_cq) {
     fprintf(stderr, "Couldn't create CQ\n");
     return FAILURE;
@@ -554,8 +551,8 @@ int create_reg_cqs(struct pingpong_context *ctx,
   return SUCCESS;
 }
 
-int create_cqs(struct pingpong_context *ctx,
-               struct perftest_parameters *user_param) {
+int create_cqs(
+    struct pingpong_context *ctx, struct perftest_parameters *user_param) {
   int ret;
   int dct_only = 0, need_recv_cq = 0;
   int tx_buffer_depth = user_param->tx_depth;
@@ -565,9 +562,9 @@ int create_cqs(struct pingpong_context *ctx,
   return ret;
 }
 
-struct ibv_qp *ctx_qp_create(struct pingpong_context *ctx,
-                             struct perftest_parameters *user_param,
-                             int qp_index) {
+struct ibv_qp *ctx_qp_create(
+    struct pingpong_context *ctx, struct perftest_parameters *user_param,
+    int qp_index) {
   struct ibv_qp *qp = NULL;
   int dc_num_of_qps = user_param->num_of_qps / 2;
 
@@ -581,7 +578,7 @@ struct ibv_qp *ctx_qp_create(struct pingpong_context *ctx,
 
   attr.cap.max_inline_data = user_param->inline_size;
   attr.cap.max_send_wr = user_param->tx_depth;
-  attr.cap.max_send_sge = 1;
+  attr.cap.max_send_sge = MAX_SEND_SGE;
 
   attr.srq = NULL;
   attr.cap.max_recv_wr = user_param->rx_depth;
@@ -591,43 +588,53 @@ struct ibv_qp *ctx_qp_create(struct pingpong_context *ctx,
 
   qp = ibv_create_qp(ctx->pd, &attr);
 
+  printf("qp->qpn: %d\n", qp->qp_num);
+
   if (qp == NULL && errno == ENOMEM) {
-    fprintf(stderr, "Requested QP size might be too big. Try reducing TX depth "
-                    "and/or inline size.\n");
-    fprintf(stderr, "Current TX depth is %d and inline size is %d .\n",
-            user_param->tx_depth, user_param->inline_size);
+    fprintf(
+        stderr,
+        "Requested QP size might be too big. Try reducing TX depth "
+        "and/or inline size.\n");
+    fprintf(
+        stderr, "Current TX depth is %d and inline size is %d .\n",
+        user_param->tx_depth, user_param->inline_size);
   }
 
   if (user_param->inline_size > qp_cap->max_inline_data) {
-    printf("  Actual inline-size(%d) < requested inline-size(%d)\n",
-           qp_cap->max_inline_data, user_param->inline_size);
+    printf(
+        "  Actual inline-size(%d) < requested inline-size(%d)\n",
+        qp_cap->max_inline_data, user_param->inline_size);
     user_param->inline_size = qp_cap->max_inline_data;
   }
 
   return qp;
 }
 
-int create_reg_qp_main(struct pingpong_context *ctx,
-                       struct perftest_parameters *user_param, int i) {
+int create_reg_qp_main(
+    struct pingpong_context *ctx, struct perftest_parameters *user_param,
+    int i) {
   ctx->qp[i] = ctx_qp_create(ctx, user_param, i);
 
   if (ctx->qp[i] == NULL) {
     fprintf(stderr, "Unable to create QP.\n");
     return FAILURE;
   }
+  printf(
+      "after init qp: %d %d %d\n", ctx->qp[i]->events_completed,
+      ctx->qp[i]->qp_num, ctx->qp[i]->handle);
 
   return SUCCESS;
 }
-int create_qp_main(struct pingpong_context *ctx,
-                   struct perftest_parameters *user_param, int i) {
+int create_qp_main(
+    struct pingpong_context *ctx, struct perftest_parameters *user_param,
+    int i) {
   int ret;
   ret = create_reg_qp_main(ctx, user_param, i);
   return ret;
 }
 
-int ctx_modify_qp_to_init(struct ibv_qp *qp,
-                          struct perftest_parameters *user_param,
-                          int qp_index) {
+int ctx_modify_qp_to_init(
+    struct ibv_qp *qp, struct perftest_parameters *user_param, int qp_index) {
   int num_of_qps = user_param->num_of_qps;
   int num_of_qps_per_port = user_param->num_of_qps / 2;
 
@@ -651,8 +658,9 @@ int ctx_modify_qp_to_init(struct ibv_qp *qp,
   return 0;
 }
 
-int modify_qp_to_init(struct pingpong_context *ctx,
-                      struct perftest_parameters *user_param, int qp_index) {
+int modify_qp_to_init(
+    struct pingpong_context *ctx, struct perftest_parameters *user_param,
+    int qp_index) {
   if (ctx_modify_qp_to_init(ctx->qp[qp_index], user_param, qp_index)) {
     fprintf(stderr, "Failed to modify QP to INIT\n");
     return FAILURE;
@@ -661,8 +669,9 @@ int modify_qp_to_init(struct pingpong_context *ctx,
   return SUCCESS;
 }
 
-int ctx_init(struct pingpong_context *ctx,
-             struct perftest_parameters *user_param) {
+int ctx_init(
+    struct pingpong_context *ctx, struct perftest_parameters *user_param) {
+  printf("ctx_init\n");
   int i;
   int dct_only = false;
   int qp_index = 0, dereg_counter;
@@ -730,8 +739,6 @@ int ctx_init(struct pingpong_context *ctx,
    * Unless, the function called with RDMA CM connection contexts,
    * need to verify the call with the existence of ctx->cm_id.
    */
-  if (!(ctx->cm_id))
-    return SUCCESS;
 
   for (i = 0; i < user_param->num_of_qps; i++) {
     if (create_qp_main(ctx, user_param, i)) {
@@ -757,8 +764,7 @@ cqs:
 mr:
   dereg_counter = 1;
 
-  for (i = 0; i < dereg_counter; i++)
-    ibv_dereg_mr(ctx->mr[i]);
+  for (i = 0; i < dereg_counter; i++) ibv_dereg_mr(ctx->mr[i]);
 
 mkey:
   ibv_dealloc_pd(ctx->pd);
@@ -766,49 +772,55 @@ mkey:
   return FAILURE;
 }
 
-static int ctx_modify_qp_to_rtr(struct ibv_qp *qp, struct ibv_qp_attr *attr,
-                                struct perftest_parameters *user_param,
-                                struct pingpong_dest *dest,
-                                struct pingpong_dest *my_dest, int qp_index) {
+static int ctx_modify_qp_to_rtr(
+    struct ibv_qp *qp, struct ibv_qp_attr *attr,
+    struct perftest_parameters *user_param, struct pingpong_dest *dest,
+    struct pingpong_dest *my_dest, int qp_index) {
   int num_of_qps = user_param->num_of_qps;
-  int num_of_qps_per_port = user_param->num_of_qps / 2;
-  int is_dc_server_side = 0;
   int flags = IBV_QP_STATE;
-  int ooo_flags = 0;
 
   attr->qp_state = IBV_QPS_RTR;
   attr->ah_attr.src_path_bits = 0;
-
-  is_dc_server_side = ((qp_index >= num_of_qps));
-  /* first half of qps are for ib_port and second half are for ib_port2
-   * in xrc with bidirectional, the first half of qps are xrc_send qps and
-   * the second half are xrc_recv qps. the first half of the send/recv qps
-   * are for ib_port1 and the second half are for ib_port2
-   */
   attr->ah_attr.port_num = user_param->ib_port;
+  printf(
+      "attr %d \n%d \n%d\n", attr->qp_state, attr->ah_attr.src_path_bits,
+      attr->ah_attr.port_num);
 
   attr->ah_attr.dlid = dest->lid;
   attr->ah_attr.sl = user_param->sl;
-
   attr->ah_attr.is_global = 0;
+
+  printf(
+      "attr %d \n%d \n%d\n", attr->ah_attr.dlid, attr->ah_attr.sl,
+      attr->ah_attr.is_global);
 
   attr->path_mtu = user_param->curr_mtu;
   attr->dest_qp_num = dest->qpn;
   attr->rq_psn = dest->psn;
 
+  printf(
+      "attr %d \n%d \n%d\n", attr->path_mtu, attr->dest_qp_num, attr->rq_psn);
+
   flags |= (IBV_QP_AV | IBV_QP_PATH_MTU | IBV_QP_DEST_QPN | IBV_QP_RQ_PSN);
 
   attr->max_dest_rd_atomic = my_dest->out_reads;
   attr->min_rnr_timer = MIN_RNR_TIMER;
+
+  printf("attr %d \n%d \n", attr->max_dest_rd_atomic, attr->min_rnr_timer);
+
   flags |= (IBV_QP_MIN_RNR_TIMER | IBV_QP_MAX_DEST_RD_ATOMIC);
+
+  printf("flags %d\n", flags);
+
+  printf("qp %d %d %d\n", qp->events_completed, qp->qp_num, qp->handle);
 
   return ibv_modify_qp(qp, attr, flags);
 }
 
-static int ctx_modify_qp_to_rts(struct ibv_qp *qp, struct ibv_qp_attr *attr,
-                                struct perftest_parameters *user_param,
-                                struct pingpong_dest *dest,
-                                struct pingpong_dest *my_dest) {
+static int ctx_modify_qp_to_rts(
+    struct ibv_qp *qp, struct ibv_qp_attr *attr,
+    struct perftest_parameters *user_param, struct pingpong_dest *dest,
+    struct pingpong_dest *my_dest) {
   int flags = IBV_QP_STATE;
 
   attr->qp_state = IBV_QPS_RTS;
@@ -820,31 +832,36 @@ static int ctx_modify_qp_to_rts(struct ibv_qp *qp, struct ibv_qp_attr *attr,
   attr->retry_cnt = 7;
   attr->rnr_retry = 7;
   attr->max_rd_atomic = dest->out_reads;
-  flags |= (IBV_QP_TIMEOUT | IBV_QP_RETRY_CNT | IBV_QP_RNR_RETRY |
-            IBV_QP_MAX_QP_RD_ATOMIC);
+  flags |=
+      (IBV_QP_TIMEOUT | IBV_QP_RETRY_CNT | IBV_QP_RNR_RETRY |
+       IBV_QP_MAX_QP_RD_ATOMIC);
 
   return ibv_modify_qp(qp, attr, flags);
 }
 
-int ctx_connect(struct pingpong_context *ctx, struct pingpong_dest *dest,
-                struct perftest_parameters *user_param,
-                struct pingpong_dest *my_dest) {
+int ctx_connect(
+    struct pingpong_context *ctx, struct pingpong_dest *dest,
+    struct perftest_parameters *user_param, struct pingpong_dest *my_dest) {
+  printf("ctx_connect\n");
   int i;
   struct ibv_qp_attr attr;
   int xrc_offset = 0;
 
   for (i = 0; i < user_param->num_of_qps; i++) {
-
     memset(&attr, 0, sizeof attr);
 
-    if (ctx_modify_qp_to_rtr(ctx->qp[i], &attr, user_param,
-                             &dest[xrc_offset + i], &my_dest[i], i)) {
+    printf("modify qp to rtr\n");
+    if (ctx_modify_qp_to_rtr(
+            ctx->qp[i], &attr, user_param, &dest[xrc_offset + i], &my_dest[i],
+            i)) {
       fprintf(stderr, "Failed to modify QP %d to RTR\n", ctx->qp[i]->qp_num);
       return FAILURE;
     }
 
-    if (ctx_modify_qp_to_rts(ctx->qp[i], &attr, user_param,
-                             &dest[xrc_offset + i], &my_dest[i])) {
+    printf("modify qp to rts\n");
+    if (ctx_modify_qp_to_rts(
+            ctx->qp[i], &attr, user_param, &dest[xrc_offset + i],
+            &my_dest[i])) {
       fprintf(stderr, "Failed to modify QP to RTS\n");
       return FAILURE;
     }
@@ -852,9 +869,9 @@ int ctx_connect(struct pingpong_context *ctx, struct pingpong_dest *dest,
   return SUCCESS;
 }
 
-void ctx_set_send_reg_wqes(struct pingpong_context *ctx,
-                           struct perftest_parameters *user_param,
-                           struct pingpong_dest *rem_dest) {
+void ctx_set_send_reg_wqes(
+    struct pingpong_context *ctx, struct perftest_parameters *user_param,
+    struct pingpong_dest *rem_dest) {
   int i, j;
   int num_of_qps = user_param->num_of_qps;
   int xrc_offset = 0;
@@ -906,27 +923,28 @@ void ctx_set_send_reg_wqes(struct pingpong_context *ctx,
   }
 }
 
-void ctx_set_send_wqes(struct pingpong_context *ctx,
-                       struct perftest_parameters *user_param,
-                       struct pingpong_dest *rem_dest) {
+void ctx_set_send_wqes(
+    struct pingpong_context *ctx, struct perftest_parameters *user_param,
+    struct pingpong_dest *rem_dest) {
   ctx_set_send_reg_wqes(ctx, user_param, rem_dest);
 }
 
-static inline int post_send_method(struct pingpong_context *ctx, int index,
-                                   struct perftest_parameters *user_param) {
+static inline int post_send_method(
+    struct pingpong_context *ctx, int index,
+    struct perftest_parameters *user_param) {
   struct ibv_send_wr *bad_wr = NULL;
-  return ibv_post_send(ctx->qp[index], &ctx->wr[index * user_param->post_list],
-                       &bad_wr);
+  return ibv_post_send(
+      ctx->qp[index], &ctx->wr[index * user_param->post_list], &bad_wr);
 }
 
-int run_iter_lat(struct pingpong_context *ctx,
-                 struct perftest_parameters *user_param) {
+int run_iter_lat(
+    struct pingpong_context *ctx, struct perftest_parameters *user_param) {
   uint64_t scnt = 0;
   int ne;
   int err = 0;
   struct ibv_wc wc;
   int cpu_mhz = get_cpu_mhz(user_param->cpu_freq_f);
-  int total_gap_cycles = 0; // user_param->latency_gap * cpu_mhz;
+  int total_gap_cycles = 0;  // user_param->latency_gap * cpu_mhz;
   cycles_t end_cycle, start_gap;
 
   ctx->wr[0].sg_list->length = user_param->size;
