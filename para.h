@@ -4,6 +4,7 @@
 
 #include <getopt.h>
 #include <infiniband/verbs.h>
+#include <inttypes.h>
 #include <math.h>
 #include <rdma/rdma_cma.h>
 
@@ -23,6 +24,15 @@
   "%"                                                                      \
   " percentile[usec] "
 
+/* Result print format for latency tests. */
+#define REPORT_FMT_LAT                                               \
+  " %-7lu %" PRIu64                                                  \
+  "          %-7.2f        %-7.2f      %-7.2f  	       %-7.2f     	" \
+  "%-7.2f		%-7.2f 		%-7.2f"
+
+#define REPORT_EXT_CPU_UTIL "	    %-3.2f\n"
+
+#define REPORT_EXT "\n"
 #define RESULT_EXT "\n"
 
 #define OFF (0)
@@ -182,7 +192,7 @@ static void init_perftest_params(struct perftest_parameters *user_param) {
   user_param->rx_depth = DEF_RX_RDMA;
   user_param->qp_timeout = DEF_QP_TIME;
   user_param->cq_mod = DEF_CQ_MOD;
-  user_param->cpu_freq_f = OFF;
+  user_param->cpu_freq_f = ON;
 }
 
 int parser(struct perftest_parameters *user_param, char *argv[], int argc) {
@@ -755,7 +765,13 @@ void print_report_lat(struct perftest_parameters *user_param) {
   iters_99 = ceil((measure_cnt) * 0.99);
   iters_99_9 = ceil((measure_cnt) * 0.999);
 
-  printf("%lf\n", average);
+  // printf("%lf\n", average);
+  printf(
+      REPORT_FMT_LAT, (unsigned long)user_param->size, user_param->iters,
+      delta[0] / cycles_rtt_quotient, delta[measure_cnt] / cycles_rtt_quotient,
+      latency, average, stdev, delta[iters_99] / cycles_rtt_quotient,
+      delta[iters_99_9] / cycles_rtt_quotient);
+  printf(REPORT_EXT);
 
   free(delta);
 }
