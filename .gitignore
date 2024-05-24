@@ -1,0 +1,16 @@
+
+/build
+/bin
+/downloads
+
+build/
+dist/
+tmp/
+python_bindings/tests/__pycache__/
+*.pyd
+var/
+.idea/
+.vscode/
+.vs/
+**.DS_Store
+*.pyc
