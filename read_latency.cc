@@ -121,7 +121,7 @@ int main(int argc, char *argv[]) {
     exit(-1);
   }
 
-  user_param.print_para();
+  // user_param.print_para();
   // ctx.print_para();
 
   if (user_param.machine == SERVER) {
@@ -143,8 +143,7 @@ int main(int argc, char *argv[]) {
 
   ctx_set_send_wqes(&ctx, &user_param, rem_dest);
 
-  // for (i = 1; i < 24; ++i) {
-  for (i = 12; i < 14; ++i) {
+  for (i = 1; i < 24; ++i) {
     user_param.size = (uint64_t)1 << i;
     if (run_iter_lat(&ctx, &user_param)) {
       error = 17;

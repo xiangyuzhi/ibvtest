@@ -302,7 +302,7 @@ static int ethernet_server_connect(struct perftest_comm *comm) {
 }
 
 int establish_connection(struct perftest_comm *comm) {
-  printf("establish_connection\n");
+  // printf("establish_connection\n");
   int (*ptr)(struct perftest_comm *);
   ptr = comm->rdma_params->servername ? &ethernet_client_connect
                                       : &ethernet_server_connect;
@@ -316,7 +316,7 @@ int establish_connection(struct perftest_comm *comm) {
 
 void exchange_versions(
     struct perftest_comm *user_comm, struct perftest_parameters *user_param) {
-  printf("exchange_versions\n");
+  // printf("exchange_versions\n");
   // if (ctx_xchg_data(user_comm, (void *)(&user_param->version),
   //                   (void *)(&user_param->rem_version),
   //                   sizeof(user_param->rem_version))) {
@@ -390,7 +390,7 @@ enum ibv_mtu set_mtu(
 int check_mtu(
     struct ibv_context *context, struct perftest_parameters *user_param,
     struct perftest_comm *user_comm) {
-  printf("check_mtu\n");
+  // printf("check_mtu\n");
   int curr_mtu, rem_mtu;
   char cur[sizeof(int)];
   char rem[sizeof(int)];
@@ -605,8 +605,6 @@ struct ibv_qp *ctx_qp_create(
 
   qp = ibv_create_qp(ctx->pd, &attr);
 
-  printf("qp->qpn: %d\n", qp->qp_num);
-
   if (qp == NULL && errno == ENOMEM) {
     fprintf(
         stderr,
@@ -636,9 +634,6 @@ int create_reg_qp_main(
     fprintf(stderr, "Unable to create QP.\n");
     return FAILURE;
   }
-  printf(
-      "after init qp: %d %d %d\n", ctx->qp[i]->events_completed,
-      ctx->qp[i]->qp_num, ctx->qp[i]->handle);
 
   return SUCCESS;
 }
@@ -690,7 +685,7 @@ int modify_qp_to_init(
 
 int ctx_init(
     struct pingpong_context *ctx, struct perftest_parameters *user_param) {
-  printf("ctx_init\n");
+  // printf("ctx_init\n");
   int i;
   int dct_only = false;
   int qp_index = 0, dereg_counter;
@@ -801,37 +796,21 @@ static int ctx_modify_qp_to_rtr(
   attr->qp_state = IBV_QPS_RTR;
   attr->ah_attr.src_path_bits = 0;
   attr->ah_attr.port_num = user_param->ib_port;
-  printf(
-      "attr %d \n%d \n%d\n", attr->qp_state, attr->ah_attr.src_path_bits,
-      attr->ah_attr.port_num);
 
   attr->ah_attr.dlid = dest->lid;
   attr->ah_attr.sl = user_param->sl;
   attr->ah_attr.is_global = 0;
 
-  printf(
-      "attr %d \n%d \n%d\n", attr->ah_attr.dlid, attr->ah_attr.sl,
-      attr->ah_attr.is_global);
-
   attr->path_mtu = user_param->curr_mtu;
   attr->dest_qp_num = dest->qpn;
   attr->rq_psn = dest->psn;
-
-  printf(
-      "attr %d \n%d \n%d\n", attr->path_mtu, attr->dest_qp_num, attr->rq_psn);
 
   flags |= (IBV_QP_AV | IBV_QP_PATH_MTU | IBV_QP_DEST_QPN | IBV_QP_RQ_PSN);
 
   attr->max_dest_rd_atomic = my_dest->out_reads;
   attr->min_rnr_timer = MIN_RNR_TIMER;
 
-  printf("attr %d \n%d \n", attr->max_dest_rd_atomic, attr->min_rnr_timer);
-
   flags |= (IBV_QP_MIN_RNR_TIMER | IBV_QP_MAX_DEST_RD_ATOMIC);
-
-  printf("flags %d\n", flags);
-
-  printf("qp %d %d %d\n", qp->events_completed, qp->qp_num, qp->handle);
 
   return ibv_modify_qp(qp, attr, flags);
 }
@@ -861,7 +840,6 @@ static int ctx_modify_qp_to_rts(
 int ctx_connect(
     struct pingpong_context *ctx, struct pingpong_dest *dest,
     struct perftest_parameters *user_param, struct pingpong_dest *my_dest) {
-  printf("ctx_connect\n");
   int i;
   struct ibv_qp_attr attr;
   int xrc_offset = 0;
@@ -869,7 +847,7 @@ int ctx_connect(
   for (i = 0; i < user_param->num_of_qps; i++) {
     memset(&attr, 0, sizeof attr);
 
-    printf("modify qp to rtr\n");
+    // printf("modify qp to rtr\n");
     if (ctx_modify_qp_to_rtr(
             ctx->qp[i], &attr, user_param, &dest[xrc_offset + i], &my_dest[i],
             i)) {
@@ -877,7 +855,7 @@ int ctx_connect(
       return FAILURE;
     }
 
-    printf("modify qp to rts\n");
+    // printf("modify qp to rts\n");
     if (ctx_modify_qp_to_rts(
             ctx->qp[i], &attr, user_param, &dest[xrc_offset + i],
             &my_dest[i])) {

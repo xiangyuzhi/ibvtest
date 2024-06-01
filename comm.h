@@ -86,7 +86,6 @@ uint16_t ctx_get_local_lid(struct ibv_context *context, int port) {
 int set_up_connection(
     struct pingpong_context *ctx, struct perftest_parameters *user_param,
     struct pingpong_dest *my_dest) {
-  printf("set_up_connection\n");
   int num_of_qps = user_param->num_of_qps;
   int num_of_qps_per_port = user_param->num_of_qps / 2;
   int i;
@@ -124,8 +123,6 @@ int set_up_connection(
         (user_param->num_of_qps + i) * BUFF_SIZE(ctx->size, ctx->cycle_buffer);
 
     memcpy(my_dest[i].gid.raw, temp_gid.raw, 16);
-
-    printf("mydest qpn %d\n", my_dest[i].qpn);
   }
 
   return 0;
@@ -265,7 +262,7 @@ static int ethernet_write_keys(
 int ctx_hand_shake(
     struct perftest_comm *comm, struct pingpong_dest *my_dest,
     struct pingpong_dest *rem_dest) {
-  printf("ctx_hand_shake\n");
+  // printf("ctx_hand_shake\n");
   int (*read_func_ptr)(struct pingpong_dest *, struct perftest_comm *);
   int (*write_func_ptr)(struct pingpong_dest *, struct perftest_comm *);
 

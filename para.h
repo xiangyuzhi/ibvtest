@@ -226,7 +226,7 @@ static void init_perftest_params(struct perftest_parameters *user_param) {
   user_param->rx_depth = DEF_RX_RDMA;
   user_param->qp_timeout = DEF_QP_TIME;
   user_param->cq_mod = DEF_CQ_MOD;
-  user_param->cpu_freq_f = OFF;
+  user_param->cpu_freq_f = ON;
 }
 
 static void force_dependecies(struct perftest_parameters *user_param) {

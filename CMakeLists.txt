@@ -6,7 +6,7 @@ find_library(RDMACM_LIBRARY rdmacm HINTS /home/atr/local/lib)
 link_libraries(pthread ${IBVERBS_LIBRARY} ${RDMACM_LIBRARY})
 include_directories("${PROJECT_SOURCE_DIR}" "/home/atr/local/include/")
 
-SET(CMAKE_CXX_FLAGS  "-Ofast -lrt -std=c++11 -DHAVE_CXX0X -march=native -fpic -fopenmp -ftree-vectorize -ftree-vectorizer-verbose=0")
+SET(CMAKE_CXX_FLAGS  "-Ofast -lrt -std=c++11 -DHAVE_CXX0X -march=native -fpic -fopenmp -ftree-vectorize -w -ftree-vectorizer-verbose=0")
 
 add_executable(read utils/get_clock.cc read_latency.cc )
 
