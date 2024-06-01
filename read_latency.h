@@ -344,11 +344,6 @@ enum ibv_mtu set_mtu(
   if (user_mtu == 0) {
     enum ctx_device current_dev = ib_dev_name(context);
     curr_mtu = port_attr.active_mtu;
-    /* CX3_PRO and CX3 have a HW bug in 4K MTU, so we're forcing it to be 2K MTU
-     */
-    if (curr_mtu == IBV_MTU_4096 &&
-        (current_dev == CONNECTX3_PRO || current_dev == CONNECTX3))
-      curr_mtu = IBV_MTU_2048;
   }
 
   else {

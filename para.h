@@ -99,38 +99,15 @@ static const char *portStates[] = {"Nop",   "Down", "Init",
 enum ctx_device {
   DEVICE_ERROR = -1,
   UNKNOWN = 0,
-  CONNECTX = 1,
-  CONNECTX2 = 2,
-  CONNECTX3 = 3,
-  CONNECTIB = 4,
-  LEGACY = 5,
-  CHELSIO_T4 = 6,
-  CHELSIO_T5 = 7,
-  CONNECTX3_PRO = 8,
-  SKYHAWK = 9,
   CONNECTX4 = 10,
   CONNECTX4LX = 11,
-  QLOGIC_E4 = 12,
-  QLOGIC_AH = 13,
-  CHELSIO_T6 = 14,
   CONNECTX5 = 15,
   CONNECTX5EX = 16,
   CONNECTX6 = 17,
   CONNECTX6DX = 18,
-  MLX5GENVF = 19,
-  BLUEFIELD = 20,
-  BLUEFIELD2 = 21,
-  INTEL_GEN1 = 22,
-  NETXTREME = 23,
-  EFA = 24,
   CONNECTX6LX = 25,
   CONNECTX7 = 26,
-  QLOGIC_AHP = 27,
-  BLUEFIELD3 = 28,
-  ERDMA = 29,
-  HNS = 30,
-  CONNECTX8 = 31,
-  INTEL_GEN2 = 32,
+  CONNECTX8 = 31
 };
 
 typedef enum { SERVER, CLIENT, UNCHOSEN } MachineType;
@@ -341,60 +318,9 @@ enum ctx_device ib_dev_name(struct ibv_context *context) {
 
   if (ibv_query_device(context, &attr)) {
     dev_fname = DEVICE_ERROR;
-  }
-
-  else if (attr.vendor_id == 5157) {
-    switch (attr.vendor_part_id >> 12) {
-      case 10:
-      case 4:
-        dev_fname = CHELSIO_T4;
-        break;
-      case 11:
-      case 5:
-        dev_fname = CHELSIO_T5;
-        break;
-      case 6:
-        dev_fname = CHELSIO_T6;
-        break;
-      default:
-        dev_fname = UNKNOWN;
-        break;
-    }
-
-    /* Assuming it's Mellanox HCA or unknown.
-    If you want Inline support in other vendor devices, please send patch to
-    gilr@dev.mellanox.co.il
-    */
-  } else if (attr.vendor_id == 0x8086) {
-    switch (attr.vendor_part_id) {
-      case 14289:
-        dev_fname = INTEL_GEN1;
-        break;
-      case 5522:
-        dev_fname = INTEL_GEN2;
-        break;
-      default:
-        dev_fname = INTEL_GEN2;
-        break;
-    }
   } else {
     // coverity[uninit_use]
     switch (attr.vendor_part_id) {
-      case 4099:
-        dev_fname = CONNECTX3;
-        break;
-      case 4100:
-        dev_fname = CONNECTX3;
-        break;
-      case 4103:
-        dev_fname = CONNECTX3_PRO;
-        break;
-      case 4104:
-        dev_fname = CONNECTX3_PRO;
-        break;
-      case 4113:
-        dev_fname = CONNECTIB;
-        break;
       case 4115:
         dev_fname = CONNECTX4;
         break;
@@ -428,9 +354,6 @@ enum ctx_device ib_dev_name(struct ibv_context *context) {
       case 4125:
         dev_fname = CONNECTX6DX;
         break;
-      case 4126:
-        dev_fname = MLX5GENVF;
-        break;
       case 4127:
         dev_fname = CONNECTX6LX;
         break;
@@ -439,198 +362,6 @@ enum ctx_device ib_dev_name(struct ibv_context *context) {
         break;
       case 4131:
         dev_fname = CONNECTX8;
-        break;
-      case 41682:
-        dev_fname = BLUEFIELD;
-        break;
-      case 41683:
-        dev_fname = BLUEFIELD;
-        break;
-      case 41686:
-        dev_fname = BLUEFIELD2;
-        break;
-      case 41692:
-        dev_fname = BLUEFIELD3;
-        break;
-      case 26418:
-        dev_fname = CONNECTX2;
-        break;
-      case 26428:
-        dev_fname = CONNECTX2;
-        break;
-      case 26438:
-        dev_fname = CONNECTX2;
-        break;
-      case 26448:
-        dev_fname = CONNECTX2;
-        break;
-      case 26458:
-        dev_fname = CONNECTX2;
-        break;
-      case 26468:
-        dev_fname = CONNECTX2;
-        break;
-      case 26478:
-        dev_fname = CONNECTX2;
-        break;
-      case 25408:
-        dev_fname = CONNECTX;
-        break;
-      case 25418:
-        dev_fname = CONNECTX;
-        break;
-      case 25428:
-        dev_fname = CONNECTX;
-        break;
-      case 25448:
-        dev_fname = CONNECTX;
-        break;
-      case 1824:
-        dev_fname = SKYHAWK;
-        break;
-      case 5684:
-        dev_fname = QLOGIC_E4;
-        break;
-      case 5700:
-        dev_fname = QLOGIC_E4;
-        break;
-      case 5716:
-        dev_fname = QLOGIC_E4;
-        break;
-      case 5718:
-        dev_fname = QLOGIC_E4;
-        break;
-      case 5734:
-        dev_fname = QLOGIC_E4;
-        break;
-      case 32880:
-        dev_fname = QLOGIC_AH;
-        break;
-      case 32881:
-        dev_fname = QLOGIC_AH;
-        break;
-      case 32882:
-        dev_fname = QLOGIC_AH;
-        break;
-      case 32883:
-        dev_fname = QLOGIC_AH;
-        break;
-      case 32912:
-        dev_fname = QLOGIC_AH;
-        break;
-      case 33136:
-        dev_fname = QLOGIC_AHP;
-        break;
-      case 33168:
-        dev_fname = QLOGIC_AHP;
-        break;
-      case 5638:
-        dev_fname = NETXTREME;
-        break;
-      case 5652:
-        dev_fname = NETXTREME;
-        break;
-      case 5824:
-        dev_fname = NETXTREME;
-        break;
-      case 5825:
-        dev_fname = NETXTREME;
-        break;
-      case 5827:
-        dev_fname = NETXTREME;
-        break;
-      case 5839:
-        dev_fname = NETXTREME;
-        break;
-      case 5846:
-        dev_fname = NETXTREME;
-        break;
-      case 5847:
-        dev_fname = NETXTREME;
-        break;
-      case 5848:
-        dev_fname = NETXTREME;
-        break;
-      case 5849:
-        dev_fname = NETXTREME;
-        break;
-      case 5855:
-        dev_fname = NETXTREME;
-        break;
-      case 5858:
-        dev_fname = NETXTREME;
-        break;
-      case 5859:
-        dev_fname = NETXTREME;
-        break;
-      case 5861:
-        dev_fname = NETXTREME;
-        break;
-      case 5867:
-        dev_fname = NETXTREME;
-        break;
-      case 5869:
-        dev_fname = NETXTREME;
-        break;
-      case 5871:
-        dev_fname = NETXTREME;
-        break;
-      case 5872:
-        dev_fname = NETXTREME;
-        break;
-      case 5873:
-        dev_fname = NETXTREME;
-        break;
-      case 5968:
-        dev_fname = NETXTREME;
-        break;
-      case 5984:
-        dev_fname = NETXTREME;
-        break;
-      case 6169:
-        dev_fname = NETXTREME;
-        break;
-      case 55296:
-        dev_fname = NETXTREME;
-        break;
-      case 55298:
-        dev_fname = NETXTREME;
-        break;
-      case 55300:
-        dev_fname = NETXTREME;
-        break;
-      case 61344:
-        dev_fname = EFA;
-        break; /* efa0 */
-      case 61345:
-        dev_fname = EFA;
-        break; /* efa1 */
-      case 61346:
-        dev_fname = EFA;
-        break; /* efa2 */
-      case 4223:
-        dev_fname = ERDMA;
-        break;
-      case 41506:
-        dev_fname = HNS;
-        break;
-      case 41507:
-        dev_fname = HNS;
-        break;
-      case 41508:
-        dev_fname = HNS;
-        break;
-      case 41509:
-        dev_fname = HNS;
-        break;
-      case 41510:
-        dev_fname = HNS;
-        break;
-      case 41512:
-        dev_fname = HNS;
-        break;
-      case 41519:
-        dev_fname = HNS;
         break;
       default:
         dev_fname = UNKNOWN;
@@ -646,20 +377,6 @@ static void ctx_set_max_inline(
 
   if (user_param->inline_size == DEF_INLINE) {
     user_param->inline_size = 0;
-    if (current_dev == NETXTREME)
-      user_param->inline_size = 96;
-    else if (current_dev == EFA)
-      user_param->inline_size = 32;
-    else if (current_dev == QLOGIC_E4)
-      user_param->inline_size = 128;
-    else if (current_dev == ERDMA)
-      user_param->inline_size = 96;
-    else if (current_dev == HNS)
-      user_param->inline_size = 32;
-    else if (current_dev == INTEL_GEN1)
-      user_param->inline_size = 48;
-    else if (current_dev == INTEL_GEN2)
-      user_param->inline_size = 101;
   }
 
   return;
