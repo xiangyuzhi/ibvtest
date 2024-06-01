@@ -121,6 +121,8 @@ int main(int argc, char *argv[]) {
     exit(-1);
   }
 
+  user_param.print_para();
+
   if (user_param.machine == SERVER) {
     if (ctx_close_connection(&user_comm, my_dest, rem_dest)) {
       fprintf(stderr, "Failed to close connection between server and client\n");
@@ -141,7 +143,7 @@ int main(int argc, char *argv[]) {
   ctx_set_send_wqes(&ctx, &user_param, rem_dest);
 
   // for (i = 1; i < 24; ++i) {
-  for (i = 12; i < 14; ++i) {
+  for (i = 13; i < 14; ++i) {
     user_param.size = (uint64_t)1 << i;
     if (run_iter_lat(&ctx, &user_param)) {
       error = 17;

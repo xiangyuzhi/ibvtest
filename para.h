@@ -169,6 +169,35 @@ struct perftest_parameters {
   int cpu_freq_f;
   cycles_t *tposted;
   cycles_t *tcompleted;
+
+  void print_para() {
+    printf("port            \t%d\n", port);
+    printf("ib_port         \t%d\n", ib_port);
+    printf("mtu             \t%d\n", mtu);
+    printf("curr_mtu        \t%d\n", curr_mtu);
+    printf("req_size        \t%d\n", req_size);
+    printf("dct_key         \t%d\n", dct_key);
+    printf("iters           \t%d\n", iters);
+    printf("link_type       \t%d\n", link_type);
+    printf("gid_index       \t%d\n", gid_index);
+    printf("inline_size     \t%d\n", inline_size);
+    printf("out_reads       \t%d\n", out_reads);
+    printf("pkey_index      \t%d\n", pkey_index);
+    printf("ai_family       \t%d\n", ai_family);
+    printf("sockfd          \t%d\n", sockfd);
+    printf("num_of_qp       \t%d\n", num_of_qps);
+    printf("cycle_buffer    \t%d\n", cycle_buffer);
+    printf("cache_line_size \t%d\n", cache_line_size);
+    printf("post_list       \t%d\n", post_list);
+    printf("flows           \t%d\n", flows);
+    printf("buff_size       \t%d\n", buff_size);
+    printf("tx_depth        \t%d\n", tx_depth);
+    printf("rx_depth        \t%d\n", rx_depth);
+    printf("sl              \t%d\n", sl);
+    printf("  qp_timeout    \t%d\n", qp_timeout);
+    printf("  cq_mod        \t%d\n", cq_mod);
+    printf("  cpu_freq_f    \t%d\n", cpu_freq_f);
+  }
 };
 
 static void init_perftest_params(struct perftest_parameters *user_param) {

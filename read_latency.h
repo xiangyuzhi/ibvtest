@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <sys/socket.h>
 
+#include "config.h"
 #include "para.h"
 #include "utils/get_clock.h"
 
@@ -526,7 +527,8 @@ int create_mr(
   for (i = 1; i < user_param->num_of_qps; i++) {
     ctx->mr[i] = ctx->mr[0];
     // cppcheck-suppress arithOperationsOnVoidPointer
-    ctx->buf[i] = ctx->buf[0] + (i * BUFF_SIZE(ctx->size, ctx->cycle_buffer));
+    ctx->buf[i] =
+        (char *)ctx->buf[0] + (i * BUFF_SIZE(ctx->size, ctx->cycle_buffer));
   }
 
   return 0;
@@ -934,6 +936,7 @@ void ctx_set_send_wqes(
 static inline int post_send_method(
     struct pingpong_context *ctx, int index,
     struct perftest_parameters *user_param) {
+  // ibv_wr_rdma_read();
   struct ibv_send_wr *bad_wr = NULL;
   return ibv_post_send(
       ctx->qp[index], &ctx->wr[index * user_param->post_list], &bad_wr);
@@ -990,4 +993,4 @@ int run_iter_lat(
   return 0;
 }
 
-#endif READ_H
+#endif  // READ_H

@@ -1,7 +1,6 @@
 #ifndef MEMORY_H
 #define MEMORY_H
 
-#include <iostream>
 #include <malloc.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -12,6 +11,8 @@
 #include <sys/shm.h>
 #include <unistd.h>
 
+#include <iostream>
+
 #define HUGEPAGE_ALIGN (2 * 1024 * 1024)
 #define SHMAT_ADDR (void *)(0x0UL)
 #define SHMAT_FLAGS (0)
@@ -20,12 +21,12 @@
 #define SUCCESS (0)
 #define FAILURE (1)
 
-#define ALLOCATE(var, type, size)                                              \
-  {                                                                            \
-    if ((var = (type *)malloc(sizeof(type) * (size))) == NULL) {               \
-      fprintf(stderr, " Cannot Allocate\n");                                   \
-      exit(1);                                                                 \
-    }                                                                          \
+#define ALLOCATE(var, type, size)                                \
+  {                                                              \
+    if ((var = (type *)malloc(sizeof(type) * (size))) == NULL) { \
+      fprintf(stderr, " Cannot Allocate\n");                     \
+      exit(1);                                                   \
+    }                                                            \
   }
 
 /* Get pointer to containing type object by a pointer to its member field */
@@ -35,10 +36,10 @@
 //     (type *)((char *)__mptr - offsetof(type, member));                         \
 //   })
 
-#define container_of(ptr, type, member)                                        \
-  ({                                                                           \
-    const auto *__mptr = (ptr);                                                \
-    (type *)((char *)__mptr - offsetof(type, member));                         \
+#define container_of(ptr, type, member)                \
+  ({                                                   \
+    const auto *__mptr = (ptr);                        \
+    (type *)((char *)__mptr - offsetof(type, member)); \
   })
 
 static int get_cache_line_size() {
@@ -49,13 +50,13 @@ static int get_cache_line_size() {
 #if defined(__sparc__) && defined(__arch64__)
     char *file_name = "/sys/devices/system/cpu/cpu0/l2_cache_line_size";
 #else
-    char *file_name =
+    std::string file_name =
         "/sys/devices/system/cpu/cpu0/cache/index0/coherency_line_size";
 #endif
 
     FILE *fp;
     char line[10];
-    fp = fopen(file_name, "r");
+    fp = fopen(file_name.c_str(), "r");
     if (fp == NULL) {
       return DEF_CACHE_LINE_SIZE;
     }
@@ -66,8 +67,7 @@ static int get_cache_line_size() {
   }
 #endif
   // cppcheck-suppress knownConditionTrueFalse
-  if (size <= 0)
-    size = DEF_CACHE_LINE_SIZE;
+  if (size <= 0) size = DEF_CACHE_LINE_SIZE;
 
   return size;
 }
@@ -77,11 +77,11 @@ static int get_cache_line_size() {
 struct memory_ctx {
   int (*init)(struct memory_ctx *ctx);
   int (*destroy)(struct memory_ctx *ctx);
-  int (*allocate_buffer)(struct memory_ctx *ctx, int alignment, uint64_t size,
-                         int *dmabuf_fd, uint64_t *dmabuf_offset, void **addr,
-                         bool *can_init);
-  int (*free_buffer)(struct memory_ctx *ctx, int dmabuf_fd, void *addr,
-                     uint64_t size);
+  int (*allocate_buffer)(
+      struct memory_ctx *ctx, int alignment, uint64_t size, int *dmabuf_fd,
+      uint64_t *dmabuf_offset, void **addr, bool *can_init);
+  int (*free_buffer)(
+      struct memory_ctx *ctx, int dmabuf_fd, void *addr, uint64_t size);
   void *(*copy_host_to_buffer)(void *dest, const void *src, size_t size);
   void *(*copy_buffer_to_host)(void *dest, const void *src, size_t size);
   void *(*copy_buffer_to_buffer)(void *dest, const void *src, size_t size);
@@ -113,8 +113,8 @@ int alloc_hugepage_region(int alignment, uint64_t size, void **addr) {
   huge_shmid =
       shmget(IPC_PRIVATE, buf_size, SHM_HUGETLB | IPC_CREAT | SHM_R | SHM_W);
   if (huge_shmid < 0) {
-    fprintf(stderr,
-            "Failed to allocate hugepages. Please configure hugepages\n");
+    fprintf(
+        stderr, "Failed to allocate hugepages. Please configure hugepages\n");
     return FAILURE;
   }
 
@@ -134,10 +134,9 @@ int alloc_hugepage_region(int alignment, uint64_t size, void **addr) {
   return SUCCESS;
 }
 
-int host_memory_allocate_buffer(struct memory_ctx *ctx, int alignment,
-                                uint64_t size, int *dmabuf_fd,
-                                uint64_t *dmabuf_offset, void **addr,
-                                bool *can_init) {
+int host_memory_allocate_buffer(
+    struct memory_ctx *ctx, int alignment, uint64_t size, int *dmabuf_fd,
+    uint64_t *dmabuf_offset, void **addr, bool *can_init) {
 #if defined(__FreeBSD__)
   posix_memalign(addr, alignment, size);
 #else
@@ -162,8 +161,8 @@ int host_memory_allocate_buffer(struct memory_ctx *ctx, int alignment,
   return SUCCESS;
 }
 
-int host_memory_free_buffer(struct memory_ctx *ctx, int dmabuf_fd, void *addr,
-                            uint64_t size) {
+int host_memory_free_buffer(
+    struct memory_ctx *ctx, int dmabuf_fd, void *addr, uint64_t size) {
   struct host_memory_ctx *host_ctx =
       container_of(ctx, struct host_memory_ctx, base);
 
@@ -190,4 +189,4 @@ struct memory_ctx *host_memory_create(struct perftest_parameters *params) {
   return &ctx->base;
 }
 
-#endif //
+#endif  //
