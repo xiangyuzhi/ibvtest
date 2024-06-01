@@ -10,6 +10,7 @@
 
 #include <iostream>
 
+#include "config.h"
 #include "mem.h"
 #include "utils/get_clock.h"
 
@@ -52,6 +53,9 @@
 #define MIN_RNR_TIMER (12)
 #define DEF_QP_TIME (14)
 #define DEF_CQ_MOD (100)
+#define MSG_SIZE_CQ_MOD_LIMIT (8192)
+#define DISABLED_CQ_MOD_VALUE (1)
+#define MAX_SIZE (8388608)
 
 /* Macro to define the buffer size (according to "Nahalem" chip set).
  * for small message size (under 4K) , we allocate 4K buffer , and the RDMA
@@ -169,6 +173,7 @@ struct perftest_parameters {
   int cpu_freq_f;
   cycles_t *tposted;
   cycles_t *tcompleted;
+  int fill_count;
 
   void print_para() {
     printf("port            \t%d\n", port);
@@ -194,9 +199,9 @@ struct perftest_parameters {
     printf("tx_depth        \t%d\n", tx_depth);
     printf("rx_depth        \t%d\n", rx_depth);
     printf("sl              \t%d\n", sl);
-    printf("  qp_timeout    \t%d\n", qp_timeout);
-    printf("  cq_mod        \t%d\n", cq_mod);
-    printf("  cpu_freq_f    \t%d\n", cpu_freq_f);
+    printf("qp_timeout    \t%d\n", qp_timeout);
+    printf("cq_mod        \t%d\n", cq_mod);
+    printf("cpu_freq_f    \t%d\n", cpu_freq_f);
   }
 };
 
@@ -221,7 +226,45 @@ static void init_perftest_params(struct perftest_parameters *user_param) {
   user_param->rx_depth = DEF_RX_RDMA;
   user_param->qp_timeout = DEF_QP_TIME;
   user_param->cq_mod = DEF_CQ_MOD;
-  user_param->cpu_freq_f = ON;
+  user_param->cpu_freq_f = OFF;
+}
+
+static void force_dependecies(struct perftest_parameters *user_param) {
+  if (user_param->tx_depth > user_param->iters) {
+    user_param->tx_depth = user_param->iters;
+  }
+
+  /* we disable cq_mod for large message size to prevent from incorrect BW
+   * calculation (and also because it is not needed) we don't disable cq_mod for
+   * UD because it doesn't support large enough messages we don't disable cq_mod
+   * for RUN_ALL mode because we cannot change it in accordance to message size
+   * during RUN_ALL run we don't disable cq_mod for use_event, because having a
+   * lot of processes with use_event leads to bugs (probably due to issues with
+   * events processing, thus we have less events)
+   */
+  if (user_param->size > MSG_SIZE_CQ_MOD_LIMIT) {
+    user_param->cq_mod =
+        DISABLED_CQ_MOD_VALUE;  // user didn't request any cq_mod
+  }
+
+  if (user_param->cq_mod > user_param->tx_depth) {
+    user_param->cq_mod = user_param->tx_depth;
+  }
+
+  user_param->size = MAX_SIZE;
+  user_param->inline_size = 0;
+
+  user_param->fill_count = 0;
+  if (user_param->cq_mod >= user_param->tx_depth &&
+      user_param->iters % user_param->tx_depth) {
+    user_param->fill_count = 1;
+  } else if (
+      user_param->cq_mod < user_param->tx_depth &&
+      user_param->iters % user_param->cq_mod) {
+    user_param->fill_count = 1;
+  }
+
+  return;
 }
 
 int parser(struct perftest_parameters *user_param, char *argv[], int argc) {
@@ -263,7 +306,7 @@ int parser(struct perftest_parameters *user_param, char *argv[], int argc) {
   }
 
   user_param->machine = user_param->servername ? CLIENT : SERVER;
-
+  force_dependecies(user_param);
   return 0;
 }
 

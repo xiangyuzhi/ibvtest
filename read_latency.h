@@ -103,6 +103,21 @@ struct pingpong_context {
   int cycle_buffer;
   int rposted;
   struct memory_ctx *memory;
+
+  void print_para() {
+    printf("size               \t%d\n", size);
+    printf("buff_size          \t%d\n", buff_size);
+    printf("send_qp_buff_size  \t%d\n", send_qp_buff_size);
+    printf("flow_buff_size     \t%d\n", flow_buff_size);
+    printf("tx_depth           \t%d\n", tx_depth);
+    printf("is_contig_supported\t%d\n", is_contig_supported);
+    printf("dek_number         \t%d\n", dek_number);
+    printf("send_rcredit       \t%d\n", send_rcredit);
+    printf("credit_cnt         \t%d\n", credit_cnt);
+    printf("cache_line_size    \t%d\n", cache_line_size);
+    printf("cycle_buffer       \t%d\n", cycle_buffer);
+    printf("rposted            \t%d\n", rposted);
+  }
 };
 
 struct pingpong_dest {
