@@ -28,7 +28,8 @@
     fprintf(stderr, "scnt=%lu, ccnt=%lu\n", scnt, ccnt);                 \
   }
 
-struct rdma_context {
+class rdma_context {
+ public:
   struct ibv_context *context;
 #ifdef HAVE_AES_XTS
   struct mlx5dv_mkey **mkey;
@@ -50,7 +51,7 @@ struct rdma_context {
   struct mlx5dv_qp_ex **dv_qp;
 #endif
   int (*new_post_send_work_request_func_pointer)(
-      struct rdma_context *ctx, int index, struct rdma_parameter *user_param);
+      rdma_context *ctx, int index, rdma_parameter *user_param);
 #endif
   struct ibv_srq *srq;
   struct ibv_sge *sge_list;
@@ -112,9 +113,10 @@ struct message_context {
   int gid_index;
 };
 
-struct rdma_comm {
-  struct rdma_context *rdma_ctx;
-  struct rdma_parameter *rdma_params;
+class rdma_comm {
+ public:
+  rdma_parameter *rdma_params;
+  rdma_context *rdma_ctx;
 };
 
 struct ibv_device *ctx_find_dev(char **ib_devname) {
@@ -173,7 +175,7 @@ int check_add_port(
   return SUCCESS;
 }
 
-static int ethernet_client_connect(struct rdma_comm *comm) {
+static int ethernet_client_connect(rdma_comm *comm) {
   struct addrinfo *res, *t;
   struct addrinfo hints;
   char *service;
@@ -293,8 +295,7 @@ int establish_connection(struct rdma_comm *comm) {
   return 0;
 }
 
-void dealloc_comm_struct(
-    struct rdma_comm *comm, struct rdma_parameter *user_param) {
+void dealloc_comm_struct(struct rdma_comm *comm, rdma_parameter *user_param) {
   free(comm->rdma_params);
 }
 
@@ -351,7 +352,7 @@ enum ibv_mtu set_mtu(
 }
 
 int check_mtu(
-    struct ibv_context *context, struct rdma_parameter *user_param,
+    struct ibv_context *context, rdma_parameter *user_param,
     struct rdma_comm *user_comm) {
   // printf("check_mtu\n");
   int curr_mtu, rem_mtu;
@@ -364,7 +365,7 @@ int check_mtu(
   return SUCCESS;
 }
 
-void dealloc_ctx(struct rdma_context *ctx, struct rdma_parameter *user_param) {
+void dealloc_ctx(rdma_context *ctx, rdma_parameter *user_param) {
   if (user_param->port_by_qp != NULL) free(user_param->port_by_qp);
 
   if (ctx->qp != NULL) free(ctx->qp);
@@ -391,7 +392,7 @@ void dealloc_ctx(struct rdma_context *ctx, struct rdma_parameter *user_param) {
     }                                                            \
   }
 
-int alloc_ctx(struct rdma_context *ctx, struct rdma_parameter *user_param) {
+int alloc_ctx(rdma_context *ctx, rdma_parameter *user_param) {
   uint64_t tarr_size;
   int num_of_qps_factor;
   ctx->cycle_buffer = user_param->cycle_buffer;
@@ -436,13 +437,13 @@ int alloc_ctx(struct rdma_context *ctx, struct rdma_parameter *user_param) {
   ctx->flow_buff_size = ctx->send_qp_buff_size / user_param->flows;
   user_param->buff_size = ctx->buff_size;
 
-  ctx->memory = user_param->memory_create(user_param);  // need fix
+  ctx->memory = user_param->memory_create();  // need fix
 
   return SUCCESS;
 }
 
 int create_single_mr(
-    struct rdma_context *ctx, struct rdma_parameter *user_param, int qp_index) {
+    rdma_context *ctx, rdma_parameter *user_param, int qp_index) {
   int flags = IBV_ACCESS_LOCAL_WRITE;
   bool can_init_mem = true;
   int dmabuf_fd = 0;
@@ -486,7 +487,7 @@ int create_single_mr(
   return SUCCESS;
 }
 
-int create_mr(struct rdma_context *ctx, struct rdma_parameter *user_param) {
+int create_mr(rdma_context *ctx, rdma_parameter *user_param) {
   int i;
   int mr_index = 0;
 
@@ -514,8 +515,8 @@ destroy_mr:
 }
 
 int create_reg_cqs(
-    struct rdma_context *ctx, struct rdma_parameter *user_param,
-    int tx_buffer_depth, int need_recv_cq) {
+    rdma_context *ctx, rdma_parameter *user_param, int tx_buffer_depth,
+    int need_recv_cq) {
   ctx->send_cq = ibv_create_cq(
       ctx->context, tx_buffer_depth * user_param->num_of_qps, NULL,
       ctx->send_channel, 0);
@@ -527,7 +528,7 @@ int create_reg_cqs(
   return SUCCESS;
 }
 
-int create_cqs(struct rdma_context *ctx, struct rdma_parameter *user_param) {
+int create_cqs(rdma_context *ctx, rdma_parameter *user_param) {
   int ret;
   int dct_only = 0, need_recv_cq = 0;
   int tx_buffer_depth = user_param->tx_depth;
@@ -538,7 +539,7 @@ int create_cqs(struct rdma_context *ctx, struct rdma_parameter *user_param) {
 }
 
 struct ibv_qp *ctx_qp_create(
-    struct rdma_context *ctx, struct rdma_parameter *user_param, int qp_index) {
+    rdma_context *ctx, rdma_parameter *user_param, int qp_index) {
   struct ibv_qp *qp = NULL;
   int dc_num_of_qps = user_param->num_of_qps / 2;
 
@@ -582,8 +583,7 @@ struct ibv_qp *ctx_qp_create(
   return qp;
 }
 
-int create_reg_qp_main(
-    struct rdma_context *ctx, struct rdma_parameter *user_param, int i) {
+int create_reg_qp_main(rdma_context *ctx, rdma_parameter *user_param, int i) {
   ctx->qp[i] = ctx_qp_create(ctx, user_param, i);
 
   if (ctx->qp[i] == NULL) {
@@ -593,15 +593,14 @@ int create_reg_qp_main(
 
   return SUCCESS;
 }
-int create_qp_main(
-    struct rdma_context *ctx, struct rdma_parameter *user_param, int i) {
+int create_qp_main(rdma_context *ctx, rdma_parameter *user_param, int i) {
   int ret;
   ret = create_reg_qp_main(ctx, user_param, i);
   return ret;
 }
 
 int ctx_modify_qp_to_init(
-    struct ibv_qp *qp, struct rdma_parameter *user_param, int qp_index) {
+    struct ibv_qp *qp, rdma_parameter *user_param, int qp_index) {
   int num_of_qps = user_param->num_of_qps;
   int num_of_qps_per_port = user_param->num_of_qps / 2;
 
@@ -628,7 +627,7 @@ int ctx_modify_qp_to_init(
 }
 
 int modify_qp_to_init(
-    struct rdma_context *ctx, struct rdma_parameter *user_param, int qp_index) {
+    rdma_context *ctx, rdma_parameter *user_param, int qp_index) {
   if (ctx_modify_qp_to_init(ctx->qp[qp_index], user_param, qp_index)) {
     fprintf(stderr, "Failed to modify QP to INIT\n");
     return FAILURE;
@@ -637,7 +636,7 @@ int modify_qp_to_init(
   return SUCCESS;
 }
 
-int ctx_init(struct rdma_context *ctx, struct rdma_parameter *user_param) {
+int ctx_init(rdma_context *ctx, rdma_parameter *user_param) {
   // printf("ctx_init\n");
   int i;
   int dct_only = false;
@@ -740,9 +739,9 @@ mkey:
 }
 
 static int ctx_modify_qp_to_rtr(
-    struct ibv_qp *qp, struct ibv_qp_attr *attr,
-    struct rdma_parameter *user_param, struct message_context *dest,
-    struct message_context *my_dest, int qp_index) {
+    struct ibv_qp *qp, struct ibv_qp_attr *attr, rdma_parameter *user_param,
+    struct message_context *dest, struct message_context *my_dest,
+    int qp_index) {
   int num_of_qps = user_param->num_of_qps;
   int flags = IBV_QP_STATE;
 
@@ -769,9 +768,8 @@ static int ctx_modify_qp_to_rtr(
 }
 
 static int ctx_modify_qp_to_rts(
-    struct ibv_qp *qp, struct ibv_qp_attr *attr,
-    struct rdma_parameter *user_param, struct message_context *dest,
-    struct message_context *my_dest) {
+    struct ibv_qp *qp, struct ibv_qp_attr *attr, rdma_parameter *user_param,
+    struct message_context *dest, struct message_context *my_dest) {
   int flags = IBV_QP_STATE;
 
   attr->qp_state = IBV_QPS_RTS;
@@ -791,8 +789,8 @@ static int ctx_modify_qp_to_rts(
 }
 
 int ctx_connect(
-    struct rdma_context *ctx, struct message_context *dest,
-    struct rdma_parameter *user_param, struct message_context *my_dest) {
+    rdma_context *ctx, struct message_context *dest, rdma_parameter *user_param,
+    struct message_context *my_dest) {
   int i;
   struct ibv_qp_attr attr;
   int xrc_offset = 0;
@@ -820,7 +818,7 @@ int ctx_connect(
 }
 
 void ctx_set_send_reg_wqes(
-    struct rdma_context *ctx, struct rdma_parameter *user_param,
+    rdma_context *ctx, rdma_parameter *user_param,
     struct message_context *rem_dest) {
   int i, j;
   int num_of_qps = user_param->num_of_qps;
@@ -874,20 +872,20 @@ void ctx_set_send_reg_wqes(
 }
 
 void ctx_set_send_wqes(
-    struct rdma_context *ctx, struct rdma_parameter *user_param,
+    rdma_context *ctx, rdma_parameter *user_param,
     struct message_context *rem_dest) {
   ctx_set_send_reg_wqes(ctx, user_param, rem_dest);
 }
 
 static inline int post_send_method(
-    struct rdma_context *ctx, int index, struct rdma_parameter *user_param) {
+    rdma_context *ctx, int index, rdma_parameter *user_param) {
   // ibv_wr_rdma_read();
   struct ibv_send_wr *bad_wr = NULL;
   return ibv_post_send(
       ctx->qp[index], &ctx->wr[index * user_param->post_list], &bad_wr);
 }
 
-int run_iter_lat(struct rdma_context *ctx, struct rdma_parameter *user_param) {
+int run_iter_lat(rdma_context *ctx, rdma_parameter *user_param) {
   uint64_t scnt = 0;
   int ne;
   int err = 0;

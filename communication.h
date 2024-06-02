@@ -21,10 +21,9 @@
     }                                                            \
   }
 
-int create_comm_struct(
-    struct rdma_comm *comm, struct rdma_parameter *user_param) {
-  MAIN_ALLOC(comm->rdma_params, struct rdma_parameter, 1, return_error);
-  memset(comm->rdma_params, 0, sizeof(struct rdma_parameter));
+int create_comm_struct(struct rdma_comm *comm, rdma_parameter *user_param) {
+  MAIN_ALLOC(comm->rdma_params, rdma_parameter, 1, return_error);
+  memset(comm->rdma_params, 0, sizeof(rdma_parameter));
 
   // remember to update when add new parameter.
   comm->rdma_params->port = user_param->port;
@@ -51,8 +50,8 @@ static inline int ipv6_addr_v4mapped(const struct in6_addr *a) {
 }
 
 static int get_best_gid_index(
-    struct rdma_context *ctx, struct rdma_parameter *user_param,
-    struct ibv_port_attr *attr, int port) {
+    rdma_context *ctx, rdma_parameter *user_param, struct ibv_port_attr *attr,
+    int port) {
   int gid_index = 0, i;
   union ibv_gid temp_gid, temp_gid_rival;
   int is_ipv4, is_ipv4_rival;
@@ -84,7 +83,7 @@ uint16_t ctx_get_local_lid(struct ibv_context *context, int port) {
 }
 
 int set_up_connection(
-    struct rdma_context *ctx, struct rdma_parameter *user_param,
+    rdma_context *ctx, rdma_parameter *user_param,
     struct message_context *my_dest) {
   int num_of_qps = user_param->num_of_qps;
   int num_of_qps_per_port = user_param->num_of_qps / 2;

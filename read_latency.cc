@@ -8,17 +8,19 @@ int main(int argc, char *argv[]) {
   // parser(rdma_param, argv, argc);
   // rdma_init(rdma_param);
 
+  rdma_comm user_comm;
+
   int i = 0, rc, error = 1;
-  struct rdma_context ctx;
-  struct rdma_parameter user_param;
+  rdma_context ctx;
+  rdma_parameter user_param;
   struct message_context *my_dest = NULL;
   struct message_context *rem_dest = NULL;
-  struct rdma_comm user_comm;
+
   // int rdma_cm_flow_destroyed = 0;
 
-  memset(&ctx, 0, sizeof(struct rdma_context));
-  memset(&user_param, 0, sizeof(struct rdma_parameter));
-  memset(&user_comm, 0, sizeof(struct rdma_comm));
+  memset(&ctx, 0, sizeof(rdma_context));
+  memset(&user_param, 0, sizeof(rdma_parameter));
+  memset(&user_comm, 0, sizeof(rdma_comm));
 
   int ret_parser = parser(&user_param, argv, argc);
 
