@@ -1,7 +1,7 @@
 #ifndef COMM_H
 #define COMM_H
 
-#include "para.h"
+#include "parameter.h"
 #include "read_latency.h"
 #include "utils/get_clock.h"
 

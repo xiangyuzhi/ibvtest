@@ -1,4 +1,4 @@
-#include "comm.h"
+#include "communication.h"
 
 void rdma_init() {}
 

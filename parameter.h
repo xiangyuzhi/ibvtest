@@ -1,6 +1,5 @@
-
-#ifndef PARA_H
-#define PARA_H
+#ifndef PARAMETER_H
+#define PARAMETER_H
 
 #include <getopt.h>
 #include <infiniband/verbs.h>
@@ -11,7 +10,7 @@
 #include <iostream>
 
 #include "config.h"
-#include "mem.h"
+#include "memory.h"
 #include "utils/get_clock.h"
 
 #define RESULT_LINE                                                            \
@@ -565,4 +564,4 @@ void print_report_lat(struct perftest_parameters *user_param) {
   free(delta);
 }
 
-#endif
+#endif  // PARAMETER_H

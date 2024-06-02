@@ -7,7 +7,7 @@
 #include <sys/socket.h>
 
 #include "config.h"
-#include "para.h"
+#include "parameter.h"
 #include "utils/get_clock.h"
 
 #define MAX_SEND_SGE (1)
@@ -939,14 +939,6 @@ int run_iter_lat(
   ctx->wr[0].send_flags = IBV_SEND_SIGNALED;
 
   while (scnt < user_param->iters) {
-    // if (user_param->latency_gap) {
-    //   start_gap = get_cycles();
-    //   end_cycle = start_gap + total_gap_cycles;
-    //   while (get_cycles() < end_cycle) {
-    //     continue;
-    //   }
-    // }
-    // if (user_param->test_type == ITERATIONS)
     user_param->tposted[scnt++] = get_cycles();
 
     err = post_send_method(ctx, 0, user_param);
