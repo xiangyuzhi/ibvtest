@@ -112,7 +112,7 @@ enum ctx_device {
 typedef enum { SERVER, CLIENT, UNCHOSEN } MachineType;
 typedef enum { LOCAL, REMOTE } PrintDataSide;
 
-struct perftest_parameters {
+struct rdma_parameter {
   int port;
   char *ib_devname;
   char *servername;
@@ -139,7 +139,7 @@ struct perftest_parameters {
   int post_list;
   int flows;
   int buff_size;
-  struct memory_ctx *(*memory_create)(struct perftest_parameters *params);
+  struct memory_ctx *(*memory_create)(struct rdma_parameter *params);
   int tx_depth;
   int rx_depth;
   uint8_t sl;
@@ -181,7 +181,7 @@ struct perftest_parameters {
   }
 };
 
-static void init_perftest_params(struct perftest_parameters *user_param) {
+static void init_perftest_params(struct rdma_parameter *user_param) {
   user_param->port = DEF_PORT;
   user_param->ib_port = DEF_IB_PORT;
   user_param->size = DEF_SIZE_LAT;
@@ -205,7 +205,7 @@ static void init_perftest_params(struct perftest_parameters *user_param) {
   user_param->cpu_freq_f = ON;
 }
 
-static void force_dependecies(struct perftest_parameters *user_param) {
+static void force_dependecies(struct rdma_parameter *user_param) {
   if (user_param->tx_depth > user_param->iters) {
     user_param->tx_depth = user_param->iters;
   }
@@ -243,7 +243,7 @@ static void force_dependecies(struct perftest_parameters *user_param) {
   return;
 }
 
-int parser(struct perftest_parameters *user_param, char *argv[], int argc) {
+int parser(struct rdma_parameter *user_param, char *argv[], int argc) {
   int c, size_len;
   char *server_ip = NULL;
   char *client_ip = NULL;
@@ -287,7 +287,7 @@ int parser(struct perftest_parameters *user_param, char *argv[], int argc) {
 }
 
 struct ibv_context *ctx_open_device(
-    struct ibv_device *ib_dev, struct perftest_parameters *user_param) {
+    struct ibv_device *ib_dev, struct rdma_parameter *user_param) {
   struct ibv_context *context;
   context = ibv_open_device(ib_dev);
 
@@ -371,7 +371,7 @@ enum ctx_device ib_dev_name(struct ibv_context *context) {
 }
 
 static void ctx_set_max_inline(
-    struct ibv_context *context, struct perftest_parameters *user_param) {
+    struct ibv_context *context, struct rdma_parameter *user_param) {
   enum ctx_device current_dev = ib_dev_name(context);
 
   if (user_param->inline_size == DEF_INLINE) {
@@ -382,7 +382,7 @@ static void ctx_set_max_inline(
 }
 
 static int get_device_max_reads(
-    struct ibv_context *context, struct perftest_parameters *user_param) {
+    struct ibv_context *context, struct rdma_parameter *user_param) {
   struct ibv_device_attr attr;
   int max_reads = 0;
 
@@ -394,7 +394,7 @@ static int get_device_max_reads(
 }
 
 static int ctx_set_out_reads(
-    struct ibv_context *context, struct perftest_parameters *user_param) {
+    struct ibv_context *context, struct rdma_parameter *user_param) {
   int max_reads = 0;
   int num_user_reads = user_param->out_reads;
 
@@ -414,7 +414,7 @@ static int ctx_set_out_reads(
 }
 
 static int set_link_layer(
-    struct ibv_context *context, struct perftest_parameters *params) {
+    struct ibv_context *context, struct rdma_parameter *params) {
   struct ibv_port_attr port_attr;
   int8_t curr_link = params->link_type;
 
@@ -465,8 +465,7 @@ static int ctx_chk_pkey_index(struct ibv_context *context, int pkey_idx) {
   return idx;
 }
 
-int check_link(
-    struct ibv_context *context, struct perftest_parameters *user_param) {
+int check_link(struct ibv_context *context, struct rdma_parameter *user_param) {
   user_param->transport_type = context->device->transport_type;
   if (set_link_layer(context, user_param) == FAILURE) {
     fprintf(stderr, " Couldn't set the link layer\n");
@@ -508,7 +507,7 @@ static inline cycles_t get_median(int n, cycles_t *delta) {
 }
 
 #define LAT_MEASURE_TAIL (2)
-void print_report_lat(struct perftest_parameters *user_param) {
+void print_report_lat(struct rdma_parameter *user_param) {
   int i;
   int rtt_factor;
   double cycles_to_units, cycles_rtt_quotient;

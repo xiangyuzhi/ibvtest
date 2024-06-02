@@ -174,7 +174,7 @@ int host_memory_free_buffer(
   return SUCCESS;
 }
 
-struct memory_ctx *host_memory_create(struct perftest_parameters *params) {
+struct memory_ctx *host_memory_create(struct rdma_parameter *params) {
   struct host_memory_ctx *ctx;
 
   ALLOCATE(ctx, struct host_memory_ctx, 1);

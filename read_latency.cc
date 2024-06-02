@@ -9,16 +9,16 @@ int main(int argc, char *argv[]) {
   // rdma_init(rdma_param);
 
   int i = 0, rc, error = 1;
-  struct pingpong_context ctx;
-  struct perftest_parameters user_param;
-  struct pingpong_dest *my_dest = NULL;
-  struct pingpong_dest *rem_dest = NULL;
-  struct perftest_comm user_comm;
+  struct rdma_context ctx;
+  struct rdma_parameter user_param;
+  struct message_context *my_dest = NULL;
+  struct message_context *rem_dest = NULL;
+  struct rdma_comm user_comm;
   // int rdma_cm_flow_destroyed = 0;
 
-  memset(&ctx, 0, sizeof(struct pingpong_context));
-  memset(&user_param, 0, sizeof(struct perftest_parameters));
-  memset(&user_comm, 0, sizeof(struct perftest_comm));
+  memset(&ctx, 0, sizeof(struct rdma_context));
+  memset(&user_param, 0, sizeof(struct rdma_parameter));
+  memset(&user_comm, 0, sizeof(struct rdma_comm));
 
   int ret_parser = parser(&user_param, argv, argc);
 
@@ -64,11 +64,11 @@ int main(int argc, char *argv[]) {
   }
 
   MAIN_ALLOC(
-      my_dest, struct pingpong_dest, user_param.num_of_qps, free_rdma_params);
-  memset(my_dest, 0, sizeof(struct pingpong_dest) * user_param.num_of_qps);
+      my_dest, struct message_context, user_param.num_of_qps, free_rdma_params);
+  memset(my_dest, 0, sizeof(struct message_context) * user_param.num_of_qps);
   MAIN_ALLOC(
-      rem_dest, struct pingpong_dest, user_param.num_of_qps, free_my_dest);
-  memset(rem_dest, 0, sizeof(struct pingpong_dest) * user_param.num_of_qps);
+      rem_dest, struct message_context, user_param.num_of_qps, free_my_dest);
+  memset(rem_dest, 0, sizeof(struct message_context) * user_param.num_of_qps);
 
   if (alloc_ctx(&ctx, &user_param)) {
     fprintf(stderr, "Couldn't allocate context\n");

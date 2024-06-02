@@ -1,8 +1,8 @@
 #ifndef COMM_H
 #define COMM_H
 
+#include "context.h"
 #include "parameter.h"
-#include "read_latency.h"
 #include "utils/get_clock.h"
 
 #define KEY_MSG_SIZE (59)      /* Message size without gid. */
@@ -22,9 +22,9 @@
   }
 
 int create_comm_struct(
-    struct perftest_comm *comm, struct perftest_parameters *user_param) {
-  MAIN_ALLOC(comm->rdma_params, struct perftest_parameters, 1, return_error);
-  memset(comm->rdma_params, 0, sizeof(struct perftest_parameters));
+    struct rdma_comm *comm, struct rdma_parameter *user_param) {
+  MAIN_ALLOC(comm->rdma_params, struct rdma_parameter, 1, return_error);
+  memset(comm->rdma_params, 0, sizeof(struct rdma_parameter));
 
   // remember to update when add new parameter.
   comm->rdma_params->port = user_param->port;
@@ -51,7 +51,7 @@ static inline int ipv6_addr_v4mapped(const struct in6_addr *a) {
 }
 
 static int get_best_gid_index(
-    struct pingpong_context *ctx, struct perftest_parameters *user_param,
+    struct rdma_context *ctx, struct rdma_parameter *user_param,
     struct ibv_port_attr *attr, int port) {
   int gid_index = 0, i;
   union ibv_gid temp_gid, temp_gid_rival;
@@ -84,8 +84,8 @@ uint16_t ctx_get_local_lid(struct ibv_context *context, int port) {
 }
 
 int set_up_connection(
-    struct pingpong_context *ctx, struct perftest_parameters *user_param,
-    struct pingpong_dest *my_dest) {
+    struct rdma_context *ctx, struct rdma_parameter *user_param,
+    struct message_context *my_dest) {
   int num_of_qps = user_param->num_of_qps;
   int num_of_qps_per_port = user_param->num_of_qps / 2;
   int i;
@@ -129,7 +129,7 @@ int set_up_connection(
 }
 
 static int ethernet_read_keys(
-    struct pingpong_dest *rem_dest, struct perftest_comm *comm) {
+    struct message_context *rem_dest, struct rdma_comm *comm) {
   if (rem_dest->gid_index == -1) {
     int parsed;
     char msg[KEY_MSG_SIZE];
@@ -223,7 +223,7 @@ static int ethernet_read_keys(
 }
 
 static int ethernet_write_keys(
-    struct pingpong_dest *my_dest, struct perftest_comm *comm) {
+    struct message_context *my_dest, struct rdma_comm *comm) {
   if (my_dest->gid_index == -1) {
     char msg[KEY_MSG_SIZE];
 
@@ -260,11 +260,11 @@ static int ethernet_write_keys(
 }
 
 int ctx_hand_shake(
-    struct perftest_comm *comm, struct pingpong_dest *my_dest,
-    struct pingpong_dest *rem_dest) {
+    struct rdma_comm *comm, struct message_context *my_dest,
+    struct message_context *rem_dest) {
   // printf("ctx_hand_shake\n");
-  int (*read_func_ptr)(struct pingpong_dest *, struct perftest_comm *);
-  int (*write_func_ptr)(struct pingpong_dest *, struct perftest_comm *);
+  int (*read_func_ptr)(struct message_context *, struct rdma_comm *);
+  int (*write_func_ptr)(struct message_context *, struct rdma_comm *);
 
   read_func_ptr = &ethernet_read_keys;
   write_func_ptr = &ethernet_write_keys;
@@ -296,8 +296,8 @@ int ctx_hand_shake(
 }
 
 int ctx_close_connection(
-    struct perftest_comm *comm, struct pingpong_dest *my_dest,
-    struct pingpong_dest *rem_dest) {
+    struct rdma_comm *comm, struct message_context *my_dest,
+    struct message_context *rem_dest) {
   /*Signal client is finished.*/
   if (ctx_hand_shake(comm, my_dest, rem_dest)) {
     return 1;
