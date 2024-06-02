@@ -1,11 +1,15 @@
 #include "comm.h"
 
+void rdma_init() {}
+
 int main(int argc, char *argv[]) {
   printf("This is the concise version of perftest.\n");
-  int ret_parser, i = 0, rc, error = 1;
-  struct report_options report;
+
+  // parser(rdma_param, argv, argc);
+  // rdma_init(rdma_param);
+
+  int i = 0, rc, error = 1;
   struct pingpong_context ctx;
-  struct ibv_device *ib_dev;
   struct perftest_parameters user_param;
   struct pingpong_dest *my_dest = NULL;
   struct pingpong_dest *rem_dest = NULL;
@@ -16,9 +20,9 @@ int main(int argc, char *argv[]) {
   memset(&user_param, 0, sizeof(struct perftest_parameters));
   memset(&user_comm, 0, sizeof(struct perftest_comm));
 
-  ret_parser = parser(&user_param, argv, argc);
+  int ret_parser = parser(&user_param, argv, argc);
 
-  ib_dev = ctx_find_dev(&user_param.ib_devname);
+  struct ibv_device *ib_dev = ctx_find_dev(&user_param.ib_devname);
   if (!ib_dev) {
     fprintf(stderr, " Unable to find the Infiniband/RoCE device\n");
     return 0;
@@ -51,7 +55,7 @@ int main(int argc, char *argv[]) {
     return 0;
   }
 
-  exchange_versions(&user_comm, &user_param);
+  // exchange_versions(&user_comm, &user_param);
 
   if (check_mtu(ctx.context, &user_param, &user_comm)) {
     fprintf(stderr, " Couldn't get context for the device\n");
@@ -83,11 +87,6 @@ int main(int argc, char *argv[]) {
     exit(0);
   }
 
-  if (ctx_hand_shake(&user_comm, my_dest, rem_dest)) {
-    fprintf(stderr, "Failed to exchange data between server and clients\n");
-    exit(0);
-  }
-
   for (i = 0; i < user_param.num_of_qps; i++) {
     /* shaking hands and gather the other side info. */
     if (ctx_hand_shake(&user_comm, &my_dest[i], &rem_dest[i])) {
@@ -95,12 +94,6 @@ int main(int argc, char *argv[]) {
       exit(0);
     }
   }
-
-  // if (ctx_check_gid_compatibility(&my_dest[0], &rem_dest[0])) {
-  //   fprintf(stderr, "\n Found Incompatibility issue with GID types.\n");
-  //   fprintf(stderr, " Please Try to use a different IP version.\n\n");
-  //   goto destroy_context;
-  // }
 
   if (ctx_connect(&ctx, rem_dest, &user_param, my_dest)) {
     fprintf(stderr, " Unable to Connect the HCA's through the link\n");
@@ -114,11 +107,6 @@ int main(int argc, char *argv[]) {
       fprintf(stderr, " Failed to exchange data between server and clients\n");
       exit(-1);
     }
-  }
-
-  if (ctx_hand_shake(&user_comm, my_dest, rem_dest)) {
-    fprintf(stderr, "Failed to exchange data between server and clients\n");
-    exit(-1);
   }
 
   // user_param.print_para();

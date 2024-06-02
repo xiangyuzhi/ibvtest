@@ -28,12 +28,6 @@
     fprintf(stderr, "scnt=%lu, ccnt=%lu\n", scnt, ccnt);                 \
   }
 
-struct report_options {
-  int unsorted;
-  int histogram;
-  int cycles;
-};
-
 struct cma {
   struct rdma_event_channel *channel;
   struct rdma_addrinfo *rai;
@@ -134,7 +128,6 @@ struct pingpong_dest {
 
 struct perftest_comm {
   struct pingpong_context *rdma_ctx;
-  struct counter_context *counter_ctx;
   struct perftest_parameters *rdma_params;
 };
 
@@ -314,16 +307,18 @@ int establish_connection(struct perftest_comm *comm) {
   return 0;
 }
 
-void exchange_versions(
-    struct perftest_comm *user_comm, struct perftest_parameters *user_param) {
-  // printf("exchange_versions\n");
-  // if (ctx_xchg_data(user_comm, (void *)(&user_param->version),
-  //                   (void *)(&user_param->rem_version),
-  //                   sizeof(user_param->rem_version))) {
-  //   fprintf(stderr, " Failed to exchange data between server and clients\n");
-  //   exit(1);
-  // }
-}
+// void exchange_versions(
+//     struct perftest_comm *user_comm, struct perftest_parameters *user_param)
+//     {
+//   // printf("exchange_versions\n");
+//   // if (ctx_xchg_data(user_comm, (void *)(&user_param->version),
+//   //                   (void *)(&user_param->rem_version),
+//   //                   sizeof(user_param->rem_version))) {
+//   //   fprintf(stderr, " Failed to exchange data between server and
+//   clients\n");
+//   //   exit(1);
+//   // }
+// }
 
 void dealloc_comm_struct(
     struct perftest_comm *comm, struct perftest_parameters *user_param) {
