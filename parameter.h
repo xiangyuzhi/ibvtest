@@ -152,6 +152,91 @@ class rdma_parameter {
   cycles_t *tcompleted;
   int fill_count;
 
+  rdma_parameter() {
+    port = DEF_PORT;
+    ib_port = DEF_IB_PORT;
+    size = DEF_SIZE_LAT;
+    req_size = 0;
+    iters = DEF_ITERS;
+    link_type = LINK_UNSPEC;
+    gid_index = DEF_GID_INDEX;
+    inline_size = DEF_INLINE;
+    pkey_index = 0;
+    ai_family = AF_INET;
+    num_of_qps = DEF_NUM_QPS;
+    cycle_buffer = sysconf(_SC_PAGESIZE);
+    cache_line_size = get_cache_line_size();
+    post_list = 1;
+    flows = DEF_FLOWS;
+    memory_create = host_memory_create;
+    tx_depth = DEF_TX_LAT;
+    rx_depth = DEF_RX_RDMA;
+    qp_timeout = DEF_QP_TIME;
+    cq_mod = DEF_CQ_MOD;
+    cpu_freq_f = ON;
+  }
+
+  int parser(char *argv[], int argc) {
+    int c, size_len;
+    char *server_ip = NULL;
+    char *client_ip = NULL;
+    char *not_int_ptr = NULL;
+
+    while (1) {
+      int long_option_index = -1;
+      static const struct option long_options[] = {
+          {.name = "port", .has_arg = 1, .val = 'p'},
+          {.name = "ib-dev", .has_arg = 1, .val = 'd'},
+          {.name = "ib-port", .has_arg = 1, .val = 'i'},
+          {.name = "mtu", .has_arg = 1, .val = 'm'},
+          {.name = "size", .has_arg = 1, .val = 's'},
+          {.name = "iters", .has_arg = 1, .val = 'n'},
+          {0}};
+      c = getopt_long(
+          argc, argv, "p:d:i:m:s:n", long_options, &long_option_index);
+      if (c == -1) break;
+      switch (c) {
+        case 'p':
+          CHECK_VALUE(port, int, "Port", not_int_ptr);
+          break;
+        case 'd':
+          GET_STRING(ib_devname, strdupa(optarg));
+          break;
+      }
+    }
+
+    if (optind == argc - 1) {
+      GET_STRING(servername, strdupa(argv[optind]));
+    } else if (optind < argc) {
+      fprintf(stderr, " Invalid Command line. Please check command rerun \n");
+      return 1;
+    }
+
+    machine = servername ? CLIENT : SERVER;
+    if (tx_depth > iters) {
+      tx_depth = iters;
+    }
+
+    if (size > MSG_SIZE_CQ_MOD_LIMIT) {
+      cq_mod = DISABLED_CQ_MOD_VALUE;  // user didn't request any cq_mod
+    }
+
+    if (cq_mod > tx_depth) {
+      cq_mod = tx_depth;
+    }
+
+    size = MAX_SIZE;
+    inline_size = 0;
+    fill_count = 0;
+    if (cq_mod >= tx_depth && iters % tx_depth) {
+      fill_count = 1;
+    } else if (cq_mod < tx_depth && iters % cq_mod) {
+      fill_count = 1;
+    }
+
+    return 0;
+  }
+
   void print_para() {
     printf("port            \t%d\n", port);
     printf("ib_port         \t%d\n", ib_port);
@@ -181,111 +266,6 @@ class rdma_parameter {
     printf("cpu_freq_f    \t%d\n", cpu_freq_f);
   }
 };
-
-static void init_perftest_params(rdma_parameter *user_param) {
-  user_param->port = DEF_PORT;
-  user_param->ib_port = DEF_IB_PORT;
-  user_param->size = DEF_SIZE_LAT;
-  user_param->req_size = 0;
-  user_param->iters = DEF_ITERS;
-  user_param->link_type = LINK_UNSPEC;
-  user_param->gid_index = DEF_GID_INDEX;
-  user_param->inline_size = DEF_INLINE;
-  user_param->pkey_index = 0;
-  user_param->ai_family = AF_INET;
-  user_param->num_of_qps = DEF_NUM_QPS;
-  user_param->cycle_buffer = sysconf(_SC_PAGESIZE);
-  user_param->cache_line_size = get_cache_line_size();
-  user_param->post_list = 1;
-  user_param->flows = DEF_FLOWS;
-  user_param->memory_create = host_memory_create;
-  user_param->tx_depth = DEF_TX_LAT;
-  user_param->rx_depth = DEF_RX_RDMA;
-  user_param->qp_timeout = DEF_QP_TIME;
-  user_param->cq_mod = DEF_CQ_MOD;
-  user_param->cpu_freq_f = ON;
-}
-
-static void force_dependecies(rdma_parameter *user_param) {
-  if (user_param->tx_depth > user_param->iters) {
-    user_param->tx_depth = user_param->iters;
-  }
-
-  /* we disable cq_mod for large message size to prevent from incorrect BW
-   * calculation (and also because it is not needed) we don't disable cq_mod for
-   * UD because it doesn't support large enough messages we don't disable cq_mod
-   * for RUN_ALL mode because we cannot change it in accordance to message size
-   * during RUN_ALL run we don't disable cq_mod for use_event, because having a
-   * lot of processes with use_event leads to bugs (probably due to issues with
-   * events processing, thus we have less events)
-   */
-  if (user_param->size > MSG_SIZE_CQ_MOD_LIMIT) {
-    user_param->cq_mod =
-        DISABLED_CQ_MOD_VALUE;  // user didn't request any cq_mod
-  }
-
-  if (user_param->cq_mod > user_param->tx_depth) {
-    user_param->cq_mod = user_param->tx_depth;
-  }
-
-  user_param->size = MAX_SIZE;
-  user_param->inline_size = 0;
-
-  user_param->fill_count = 0;
-  if (user_param->cq_mod >= user_param->tx_depth &&
-      user_param->iters % user_param->tx_depth) {
-    user_param->fill_count = 1;
-  } else if (
-      user_param->cq_mod < user_param->tx_depth &&
-      user_param->iters % user_param->cq_mod) {
-    user_param->fill_count = 1;
-  }
-
-  return;
-}
-
-int parser(rdma_parameter *user_param, char *argv[], int argc) {
-  int c, size_len;
-  char *server_ip = NULL;
-  char *client_ip = NULL;
-  char *not_int_ptr = NULL;
-
-  init_perftest_params(user_param);
-
-  while (1) {
-    int long_option_index = -1;
-    static const struct option long_options[] = {
-        {.name = "port", .has_arg = 1, .val = 'p'},
-        {.name = "ib-dev", .has_arg = 1, .val = 'd'},
-        {.name = "ib-port", .has_arg = 1, .val = 'i'},
-        {.name = "mtu", .has_arg = 1, .val = 'm'},
-        {.name = "size", .has_arg = 1, .val = 's'},
-        {.name = "iters", .has_arg = 1, .val = 'n'},
-        {0}};
-    c = getopt_long(
-        argc, argv, "p:d:i:m:s:n", long_options, &long_option_index);
-    if (c == -1) break;
-    switch (c) {
-      case 'p':
-        CHECK_VALUE(user_param->port, int, "Port", not_int_ptr);
-        break;
-      case 'd':
-        GET_STRING(user_param->ib_devname, strdupa(optarg));
-        break;
-    }
-  }
-
-  if (optind == argc - 1) {
-    GET_STRING(user_param->servername, strdupa(argv[optind]));
-  } else if (optind < argc) {
-    fprintf(stderr, " Invalid Command line. Please check command rerun \n");
-    return 1;
-  }
-
-  user_param->machine = user_param->servername ? CLIENT : SERVER;
-  force_dependecies(user_param);
-  return 0;
-}
 
 struct ibv_context *ctx_open_device(
     struct ibv_device *ib_dev, rdma_parameter *user_param) {

@@ -5,24 +5,22 @@ void rdma_init() {}
 int main(int argc, char *argv[]) {
   printf("This is the concise version of perftest.\n");
 
-  // parser(rdma_param, argv, argc);
-  // rdma_init(rdma_param);
+  rdma_parameter user_param;
+  int ret_parser = user_param.parser(argv, argc);
+  if (ret_parser) {
+    printf("Failed to parser parameter.\n");
+    exit(0);
+  }
 
   rdma_comm user_comm;
 
-  int i = 0, rc, error = 1;
   rdma_context ctx;
-  rdma_parameter user_param;
   struct message_context *my_dest = NULL;
   struct message_context *rem_dest = NULL;
 
-  // int rdma_cm_flow_destroyed = 0;
-
   memset(&ctx, 0, sizeof(rdma_context));
-  memset(&user_param, 0, sizeof(rdma_parameter));
-  memset(&user_comm, 0, sizeof(rdma_comm));
 
-  int ret_parser = parser(&user_param, argv, argc);
+  memset(&user_comm, 0, sizeof(rdma_comm));
 
   struct ibv_device *ib_dev = ctx_find_dev(&user_param.ib_devname);
   if (!ib_dev) {
@@ -89,7 +87,7 @@ int main(int argc, char *argv[]) {
     exit(0);
   }
 
-  for (i = 0; i < user_param.num_of_qps; i++) {
+  for (int i = 0; i < user_param.num_of_qps; i++) {
     /* shaking hands and gather the other side info. */
     if (ctx_hand_shake(&user_comm, &my_dest[i], &rem_dest[i])) {
       fprintf(stderr, "Failed to exchange data between server and clients\n");
@@ -104,7 +102,7 @@ int main(int argc, char *argv[]) {
 
   user_comm.rdma_params->side = REMOTE;
 
-  for (i = 0; i < user_param.num_of_qps; i++) {
+  for (int i = 0; i < user_param.num_of_qps; i++) {
     if (ctx_hand_shake(&user_comm, &my_dest[i], &rem_dest[i])) {
       fprintf(stderr, " Failed to exchange data between server and clients\n");
       exit(-1);
@@ -133,10 +131,9 @@ int main(int argc, char *argv[]) {
 
   ctx_set_send_wqes(&ctx, &user_param, rem_dest);
 
-  for (i = 1; i < 24; ++i) {
+  for (int i = 1; i < 24; ++i) {
     user_param.size = (uint64_t)1 << i;
     if (run_iter_lat(&ctx, &user_param)) {
-      error = 17;
       goto free_mem;
     }
     print_report_lat(&user_param);
