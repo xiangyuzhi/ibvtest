@@ -55,6 +55,7 @@
 #define MSG_SIZE_CQ_MOD_LIMIT (8192)
 #define DISABLED_CQ_MOD_VALUE (1)
 #define MAX_SIZE (8388608)
+#define DEF_INLINE_WRITE (220)
 
 /* Macro to define the buffer size (according to "Nahalem" chip set).
  * for small message size (under 4K) , we allocate 4K buffer , and the RDMA
@@ -111,9 +112,11 @@ enum ctx_device {
 
 typedef enum { SERVER, CLIENT, UNCHOSEN } MachineType;
 typedef enum { LOCAL, REMOTE } PrintDataSide;
+typedef enum { SEND, WRITE, WRITE_IMM, READ, ATOMIC } VerbType;
 
 class rdma_parameter {
  public:
+  VerbType verb;
   int port;
   char *ib_devname;
   char *servername;
@@ -151,12 +154,14 @@ class rdma_parameter {
   cycles_t *tposted;
   cycles_t *tcompleted;
   int fill_count;
+  int req_cq_mod;
 
   rdma_parameter() {
     port = DEF_PORT;
     ib_port = DEF_IB_PORT;
     size = DEF_SIZE_LAT;
     req_size = 0;
+    dct_key = 0;
     iters = DEF_ITERS;
     link_type = LINK_UNSPEC;
     gid_index = DEF_GID_INDEX;
@@ -171,9 +176,11 @@ class rdma_parameter {
     memory_create = host_memory_create;
     tx_depth = DEF_TX_LAT;
     rx_depth = DEF_RX_RDMA;
+    sl = 0;
     qp_timeout = DEF_QP_TIME;
     cq_mod = DEF_CQ_MOD;
     cpu_freq_f = ON;
+    req_cq_mod = 0;
   }
 
   int parser(char *argv[], int argc) {
@@ -226,7 +233,6 @@ class rdma_parameter {
     }
 
     size = MAX_SIZE;
-    inline_size = 0;
     fill_count = 0;
     if (cq_mod >= tx_depth && iters % tx_depth) {
       fill_count = 1;
@@ -266,6 +272,42 @@ class rdma_parameter {
     printf("cpu_freq_f    \t%d\n", cpu_freq_f);
   }
 };
+
+static void force_dependecies(struct rdma_parameter *user_param) {
+  /*Additional configuration and assignments.*/
+  if (user_param->verb == WRITE) {
+    user_param->rx_depth = DEF_RX_RDMA;
+  }
+
+  if (user_param->tx_depth > user_param->iters) {
+    user_param->tx_depth = user_param->iters;
+  }
+
+  if ((user_param->verb == SEND || user_param->verb == WRITE_IMM) &&
+      user_param->rx_depth > user_param->iters) {
+    user_param->rx_depth = user_param->iters;
+  }
+
+  if (user_param->cq_mod > user_param->tx_depth) {
+    user_param->cq_mod = user_param->tx_depth;
+  }
+
+  if (user_param->verb == READ || user_param->verb == ATOMIC)
+    user_param->inline_size = 0;
+
+  user_param->size = MAX_SIZE;
+
+  user_param->fill_count = 0;
+  if (user_param->cq_mod >= user_param->tx_depth &&
+      user_param->iters % user_param->tx_depth) {
+    user_param->fill_count = 1;
+  } else if (
+      user_param->cq_mod < user_param->tx_depth &&
+      user_param->iters % user_param->cq_mod) {
+    user_param->fill_count = 1;
+  }
+  return;
+}
 
 struct ibv_context *ctx_open_device(
     struct ibv_device *ib_dev, rdma_parameter *user_param) {
@@ -356,7 +398,14 @@ static void ctx_set_max_inline(
   enum ctx_device current_dev = ib_dev_name(context);
 
   if (user_param->inline_size == DEF_INLINE) {
-    user_param->inline_size = 0;
+    switch (user_param->verb) {
+      case WRITE_IMM:
+      case WRITE:
+        user_param->inline_size = DEF_INLINE_WRITE;
+        break;
+      default:
+        user_param->inline_size = 0;
+    }
   }
 
   return;
@@ -460,7 +509,10 @@ int check_link(struct ibv_context *context, rdma_parameter *user_param) {
   /* Compute Max inline size with pre found statistics values */
   ctx_set_max_inline(context, user_param);
 
-  user_param->out_reads = ctx_set_out_reads(context, user_param);
+  if (user_param->verb == READ || user_param->verb == ATOMIC)
+    user_param->out_reads = ctx_set_out_reads(context, user_param);
+  else
+    user_param->out_reads = 1;
 
   if (user_param->pkey_index > 0)
     user_param->pkey_index =

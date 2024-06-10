@@ -11,6 +11,10 @@ int main(int argc, char *argv[]) {
     printf("Failed to parser parameter.\n");
     exit(0);
   }
+  user_param.verb = READ;
+  // user_param.verb = WRITE;
+
+  force_dependecies(&user_param);
 
   rdma_comm user_comm;
 
@@ -131,10 +135,19 @@ int main(int argc, char *argv[]) {
 
   ctx_set_send_wqes(&ctx, &user_param, rem_dest);
 
+  // user_param.print_para();
+  // print_ctx(&ctx);
+
   for (int i = 1; i < 24; ++i) {
     user_param.size = (uint64_t)1 << i;
-    if (run_iter_lat(&ctx, &user_param)) {
-      goto free_mem;
+    if (user_param.verb == READ) {
+      if (run_iter_lat(&ctx, &user_param)) {
+        goto free_mem;
+      }
+    } else if (user_param.verb == WRITE) {
+      if (run_iter_lat_write(&ctx, &user_param)) {
+        goto free_mem;
+      }
     }
     print_report_lat(&user_param);
   }

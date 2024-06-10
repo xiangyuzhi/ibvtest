@@ -459,9 +459,15 @@ int create_single_mr(
     return FAILURE;
   }
 
-  flags |= IBV_ACCESS_REMOTE_READ;
-  if (user_param->transport_type == IBV_TRANSPORT_IWARP)
+  if (user_param->verb == WRITE || user_param->verb == WRITE_IMM) {
     flags |= IBV_ACCESS_REMOTE_WRITE;
+  } else if (user_param->verb == READ) {
+    flags |= IBV_ACCESS_REMOTE_READ;
+    if (user_param->transport_type == IBV_TRANSPORT_IWARP)
+      flags |= IBV_ACCESS_REMOTE_WRITE;
+  } else if (user_param->verb == ATOMIC) {
+    flags |= IBV_ACCESS_REMOTE_ATOMIC;
+  }
 
   {
     ctx->mr[qp_index] =
@@ -479,9 +485,14 @@ int create_single_mr(
    */
   if (can_init_mem) {
     srand(time(NULL));
-    uint64_t i;
-    for (i = 0; i < ctx->buff_size; i++) {
-      ((char *)ctx->buf[qp_index])[i] = (char)rand();
+
+    if ((user_param->verb == WRITE || user_param->verb == WRITE_IMM)) {
+      memset(ctx->buf[qp_index], 0, ctx->buff_size);
+    } else {
+      uint64_t i;
+      for (i = 0; i < ctx->buff_size; i++) {
+        ((char *)ctx->buf[qp_index])[i] = (char)rand();
+      }
     }
   }
   return SUCCESS;
@@ -615,7 +626,21 @@ int ctx_modify_qp_to_init(
   attr.pkey_index = user_param->pkey_index;
 
   attr.port_num = user_param->ib_port;
-  attr.qp_access_flags = IBV_ACCESS_REMOTE_READ;
+  switch (user_param->verb) {
+    case ATOMIC:
+      attr.qp_access_flags = IBV_ACCESS_REMOTE_ATOMIC;
+      break;
+    case READ:
+      attr.qp_access_flags = IBV_ACCESS_REMOTE_READ;
+      break;
+    case WRITE_IMM:
+    case WRITE:
+      attr.qp_access_flags = IBV_ACCESS_REMOTE_WRITE;
+      break;
+    case SEND:
+      attr.qp_access_flags = IBV_ACCESS_REMOTE_WRITE | IBV_ACCESS_LOCAL_WRITE;
+  }
+  flags |= IBV_QP_ACCESS_FLAGS;
   flags |= IBV_QP_ACCESS_FLAGS;
   ret = ibv_modify_qp(qp, &attr, flags);
 
@@ -859,7 +884,11 @@ void ctx_set_send_reg_wqes(
         ctx->wr[i * user_param->post_list + j].send_flags = 0;
       }
 
-      ctx->wr[i * user_param->post_list + j].opcode = IBV_WR_RDMA_READ;
+      enum ibv_wr_opcode opcode_verbs_array[] = {
+          IBV_WR_SEND, IBV_WR_RDMA_WRITE, IBV_WR_RDMA_WRITE_WITH_IMM,
+          IBV_WR_RDMA_READ};
+      ctx->wr[i * user_param->post_list + j].opcode =
+          opcode_verbs_array[user_param->verb];
 
       ctx->wr[i * user_param->post_list + j].wr.rdma.rkey =
           rem_dest[xrc_offset + i].rkey;
@@ -867,6 +896,10 @@ void ctx_set_send_reg_wqes(
         ctx->wr[i * user_param->post_list + j].wr.rdma.remote_addr =
             ctx->wr[i * user_param->post_list + (j - 1)].wr.rdma.remote_addr;
       }
+      if ((user_param->verb == WRITE) &&
+          user_param->size <= user_param->inline_size)
+        ctx->wr[i * user_param->post_list + j].send_flags |= IBV_SEND_INLINE;
+      printf("flags %d\n", ctx->wr[i * user_param->post_list + j].send_flags);
     }
   }
 }
@@ -924,6 +957,91 @@ int run_iter_lat(rdma_context *ctx, rdma_parameter *user_param) {
     } while (ne == 0);
   }
 
+  return 0;
+}
+
+void print_ctx(rdma_context *ctx) {
+  printf("ctx ------------------\n");
+  printf("buff_size: %d \n", ctx->buff_size);
+  printf("buff_size:\t %d \n", ctx->cache_line_size);
+  printf("ccnt:\t %d \n", ctx->ccnt);
+  printf("credit_cnt:\t %d \n", ctx->credit_cnt);
+  printf("cycle_buffer:\t %d \n", ctx->cycle_buffer);
+  printf("dek_number:\t %d \n", ctx->dek_number);
+  printf("flow_buff_size:\t %d \n", ctx->flow_buff_size);
+  printf("rposted:\t %d \n", ctx->rposted);
+  printf("send_qp_buff_size:\t %d \n", ctx->send_qp_buff_size);
+  printf("send_rcredit:\t %d \n", ctx->send_rcredit);
+  printf("size:\t %d \n", ctx->size);
+}
+
+int run_iter_lat_write(rdma_context *ctx, rdma_parameter *user_param) {
+  uint64_t scnt = 0;
+  uint64_t ccnt = 0;
+  uint64_t rcnt = 0;
+  int ne;
+  int err = 0;
+  int poll_buf_offset = 0;
+  volatile char *poll_buf = NULL;
+  volatile char *post_buf = NULL;
+
+  struct ibv_wc wc;
+
+  int cpu_mhz = get_cpu_mhz(user_param->cpu_freq_f);
+  cycles_t end_cycle, start_gap;
+
+  ctx->wr[0].sg_list->length = user_param->size;
+  ctx->wr[0].send_flags = IBV_SEND_SIGNALED;
+
+  if (user_param->size <= user_param->inline_size) {
+    ctx->wr[0].send_flags |= IBV_SEND_INLINE;
+  }
+
+  post_buf = (char *)ctx->buf[0] + user_param->size - 1;
+  poll_buf = (char *)ctx->buf[0] +
+             (user_param->num_of_qps + poll_buf_offset) *
+                 BUFF_SIZE(ctx->size, ctx->cycle_buffer) +
+             user_param->size - 1;
+
+  /* Done with setup. Start the test. */
+  while (scnt < user_param->iters || ccnt < user_param->iters ||
+         rcnt < user_param->iters) {
+    if (rcnt < user_param->iters &&
+        !(scnt < 1 && user_param->machine == SERVER)) {
+      rcnt++;
+      while (*poll_buf != (char)rcnt && false);
+    }
+
+    if (scnt < user_param->iters) {
+      user_param->tposted[scnt] = get_cycles();
+
+      *post_buf = (char)++scnt;
+
+      err = post_send_method(ctx, 0, user_param);
+
+      if (err) {
+        fprintf(stderr, "Couldn't post send: scnt=%lu\n", scnt);
+        return 1;
+      }
+    }
+    if (ccnt < user_param->iters) {
+      do {
+        ne = ibv_poll_cq(ctx->send_cq, 1, &wc);
+      } while (ne == 0);
+
+      if (ne > 0) {
+        if (wc.status != IBV_WC_SUCCESS) {
+          // coverity[uninit_use_in_call]
+          NOTIFY_COMP_ERROR_SEND(wc, scnt, ccnt);
+          return 1;
+        }
+        ccnt++;
+      } else if (ne < 0) {
+        fprintf(stderr, "poll CQ failed %d\n", ne);
+        return FAILURE;
+      }
+    }
+  }
   return 0;
 }
 
