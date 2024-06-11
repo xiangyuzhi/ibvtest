@@ -868,6 +868,31 @@ void ctx_set_send_wqes(
   }
 }
 
+void read_init(
+    rdma_context *ctx, rdma_parameter *user_param,
+    struct message_context *rem_dest) {
+  memset(&ctx->wr[0], 0, sizeof(struct ibv_send_wr));
+  ctx->sge_list[0].addr = (uintptr_t)ctx->buf[0];
+  ctx->wr[0].wr.rdma.remote_addr = rem_dest[0].vaddr;
+  ctx->sge_list[0].length = user_param->size;
+  ctx->sge_list[0].lkey = ctx->mr[0]->lkey;
+
+  ctx->wr[0].sg_list = &ctx->sge_list[0];
+  ctx->wr[0].num_sge = MAX_SEND_SGE;
+  ctx->wr[0].wr_id = 0;
+
+  ctx->wr[0].next = NULL;
+
+  if (user_param->cq_mod == 1) {
+    ctx->wr[0].send_flags = IBV_SEND_SIGNALED;
+  } else {
+    ctx->wr[0].send_flags = 0;
+  }
+
+  ctx->wr[0].opcode = IBV_WR_RDMA_READ;
+  ctx->wr[0].wr.rdma.rkey = rem_dest[0].rkey;
+}
+
 void write_init(
     rdma_context *ctx, rdma_parameter *user_param,
     struct message_context *rem_dest) {
@@ -904,20 +929,19 @@ static inline int post_send_method(
       ctx->qp[index], &ctx->wr[index * user_param->post_list], &bad_wr);
 }
 
-int run_read(rdma_context *ctx, rdma_parameter *user_param) {
-  int ne;
-  int err = 0;
-  struct ibv_wc wc;
-
-  ctx->wr[0].sg_list->length = user_param->size;
+int run_read(rdma_context *ctx, uint32_t size) {
+  ctx->wr[0].sg_list->length = size;
   ctx->wr[0].send_flags = IBV_SEND_SIGNALED;
-  err = post_send_method(ctx, 0, user_param);
 
+  struct ibv_send_wr *bad_wr = NULL;
+  int err = ibv_post_send(ctx->qp[0], &ctx->wr[0], &bad_wr);
   if (err) {
     fprintf(stderr, "Couldn't post send");
     return 1;
   }
 
+  int ne;
+  struct ibv_wc wc;
   do {
     ne = ibv_poll_cq(ctx->send_cq, 1, &wc);
     if (ne > 0) {

@@ -1,8 +1,6 @@
 #include "communication.h"
 
-void rdma_write(
-    rdma_context *ctx, rdma_parameter *user_param,
-    struct message_context *rem_dest) {
+void rdma_write(rdma_context *ctx) {
   std::string tst = "hello_zhixiangxiang";
   uint32_t len = tst.size();
 
@@ -17,19 +15,15 @@ void rdma_write(
   run_write(ctx, len);
 }
 
-void rdma_read(
-    rdma_context *ctx, rdma_parameter *user_param,
-    struct message_context *rem_dest) {
+void rdma_read(rdma_context *ctx) {
   std::string tst = "hello_zhixiangxiang";
-  user_param->size = 19;
-  user_param->verb = READ;
+  uint32_t len = tst.size();
 
-  ctx_set_send_wqes(ctx, user_param, rem_dest);
-  run_read(ctx, user_param);
+  run_read(ctx, len);
 
   char *ans = (char *)ctx->buf[0];
-  printf("ans %d\n", user_param->size);
-  for (int i = 0; i < user_param->size; i++) {
+  printf("ans %d\n", len);
+  for (int i = 0; i < len; i++) {
     printf("%d", ans[i]);
   }
   printf("\n");
@@ -164,10 +158,11 @@ int main(int argc, char *argv[]) {
 
   // write api
   write_init(&ctx, &user_param, rem_dest);
-  rdma_write(&ctx, &user_param, rem_dest);
+  rdma_write(&ctx);
 
   // read api
-  rdma_read(&ctx, &user_param, rem_dest);
+  read_init(&ctx, &user_param, rem_dest);
+  rdma_read(&ctx);
 
   //   printf(RESULT_LINE);
   //   printf("%s", RESULT_FMT_LAT);
