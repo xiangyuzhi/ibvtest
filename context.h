@@ -430,9 +430,11 @@ int alloc_ctx(rdma_context *ctx, rdma_parameter *user_param) {
    * send buffer(first half) and receive buffer(second half)
    * with reference to number of flows and number of QPs
    */
+  // ctx->buff_size =
+  //     INC(BUFF_SIZE(ctx->size, ctx->cycle_buffer), ctx->cache_line_size) * 2
+  //     * num_of_qps_factor * user_param->flows;
   ctx->buff_size =
-      INC(BUFF_SIZE(ctx->size, ctx->cycle_buffer), ctx->cache_line_size) * 2 *
-      num_of_qps_factor * user_param->flows;
+      INC(BUFF_SIZE(ctx->size, ctx->cycle_buffer), ctx->cache_line_size);
   ctx->send_qp_buff_size = ctx->buff_size / num_of_qps_factor / 2;
   ctx->flow_buff_size = ctx->send_qp_buff_size / user_param->flows;
   user_param->buff_size = ctx->buff_size;
@@ -509,14 +511,6 @@ int create_mr(rdma_context *ctx, rdma_parameter *user_param) {
     return 1;
   }
   mr_index++;
-
-  /* create the rest if needed, or copy the first one */
-  for (int i = 1; i < user_param->num_of_qps; i++) {
-    ctx->mr[i] = ctx->mr[0];
-    // cppcheck-suppress arithOperationsOnVoidPointer
-    ctx->buf[i] =
-        (char *)ctx->buf[0] + (i * BUFF_SIZE(ctx->size, ctx->cycle_buffer));
-  }
   return 0;
 
 destroy_mr:
