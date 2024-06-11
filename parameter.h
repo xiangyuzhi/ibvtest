@@ -183,6 +183,38 @@ class rdma_parameter {
     req_cq_mod = 0;
   }
 
+  void force_dependecies() {
+    verb = WRITE;
+    /*Additional configuration and assignments.*/
+    if (verb == WRITE) {
+      rx_depth = DEF_RX_RDMA;
+    }
+
+    if (tx_depth > iters) {
+      tx_depth = iters;
+    }
+
+    if ((verb == SEND || verb == WRITE_IMM) && rx_depth > iters) {
+      rx_depth = iters;
+    }
+
+    if (cq_mod > tx_depth) {
+      cq_mod = tx_depth;
+    }
+
+    if (verb == READ || verb == ATOMIC) inline_size = 0;
+
+    size = MAX_SIZE;
+
+    fill_count = 0;
+    if (cq_mod >= tx_depth && iters % tx_depth) {
+      fill_count = 1;
+    } else if (cq_mod < tx_depth && iters % cq_mod) {
+      fill_count = 1;
+    }
+    return;
+  }
+
   int parser(char *argv[], int argc) {
     int c, size_len;
     char *server_ip = NULL;
@@ -240,6 +272,7 @@ class rdma_parameter {
       fill_count = 1;
     }
 
+    force_dependecies();
     return 0;
   }
 
@@ -272,42 +305,6 @@ class rdma_parameter {
     printf("cpu_freq_f    \t%d\n", cpu_freq_f);
   }
 };
-
-static void force_dependecies(struct rdma_parameter *user_param) {
-  /*Additional configuration and assignments.*/
-  if (user_param->verb == WRITE) {
-    user_param->rx_depth = DEF_RX_RDMA;
-  }
-
-  if (user_param->tx_depth > user_param->iters) {
-    user_param->tx_depth = user_param->iters;
-  }
-
-  if ((user_param->verb == SEND || user_param->verb == WRITE_IMM) &&
-      user_param->rx_depth > user_param->iters) {
-    user_param->rx_depth = user_param->iters;
-  }
-
-  if (user_param->cq_mod > user_param->tx_depth) {
-    user_param->cq_mod = user_param->tx_depth;
-  }
-
-  if (user_param->verb == READ || user_param->verb == ATOMIC)
-    user_param->inline_size = 0;
-
-  user_param->size = MAX_SIZE;
-
-  user_param->fill_count = 0;
-  if (user_param->cq_mod >= user_param->tx_depth &&
-      user_param->iters % user_param->tx_depth) {
-    user_param->fill_count = 1;
-  } else if (
-      user_param->cq_mod < user_param->tx_depth &&
-      user_param->iters % user_param->cq_mod) {
-    user_param->fill_count = 1;
-  }
-  return;
-}
 
 struct ibv_context *ctx_open_device(
     struct ibv_device *ib_dev, rdma_parameter *user_param) {

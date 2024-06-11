@@ -306,9 +306,6 @@ int ctx_close_connection(
 void com_init(
     rdma_context &ctx, rdma_parameter &user_param, rdma_comm &user_comm,
     message_context *&my_dest, message_context *&rem_dest) {
-  user_param.verb = WRITE;
-
-  force_dependecies(&user_param);
   memset(&ctx, 0, sizeof(rdma_context));
   memset(&user_comm, 0, sizeof(rdma_comm));
 

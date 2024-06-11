@@ -434,7 +434,7 @@ int alloc_ctx(rdma_context *ctx, rdma_parameter *user_param) {
   //     INC(BUFF_SIZE(ctx->size, ctx->cycle_buffer), ctx->cache_line_size) * 2
   //     * num_of_qps_factor * user_param->flows;
   ctx->buff_size =
-      INC(BUFF_SIZE(ctx->size, ctx->cycle_buffer), ctx->cache_line_size);
+      INC(BUFF_SIZE(ctx->size, ctx->cycle_buffer), ctx->cache_line_size) * 2;
   ctx->send_qp_buff_size = ctx->buff_size / num_of_qps_factor / 2;
   ctx->flow_buff_size = ctx->send_qp_buff_size / user_param->flows;
   user_param->buff_size = ctx->buff_size;

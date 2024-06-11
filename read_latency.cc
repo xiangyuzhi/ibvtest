@@ -14,8 +14,6 @@ int main(int argc, char *argv[]) {
   user_param.verb = READ;
   // user_param.verb = WRITE;
 
-  force_dependecies(&user_param);
-
   rdma_comm user_comm;
 
   rdma_context ctx;
