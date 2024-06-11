@@ -876,6 +876,37 @@ static inline int post_send_method(
       ctx->qp[index], &ctx->wr[index * user_param->post_list], &bad_wr);
 }
 
+int run_read(rdma_context *ctx, rdma_parameter *user_param) {
+  int ne;
+  int err = 0;
+  struct ibv_wc wc;
+
+  ctx->wr[0].sg_list->length = user_param->size;
+  ctx->wr[0].send_flags = IBV_SEND_SIGNALED;
+  err = post_send_method(ctx, 0, user_param);
+
+  if (err) {
+    fprintf(stderr, "Couldn't post send");
+    return 1;
+  }
+
+  do {
+    ne = ibv_poll_cq(ctx->send_cq, 1, &wc);
+    if (ne > 0) {
+      if (wc.status != IBV_WC_SUCCESS) {
+        // coverity[uninit_use_in_call]
+        return 1;
+      }
+
+    } else if (ne < 0) {
+      fprintf(stderr, "poll CQ failed %d\n", ne);
+      return FAILURE;
+    }
+
+  } while (ne == 0);
+  return 0;
+}
+
 int run_iter_lat(rdma_context *ctx, rdma_parameter *user_param) {
   uint64_t scnt = 0;
   int ne;
@@ -931,6 +962,42 @@ void print_ctx(rdma_context *ctx) {
   printf("send_qp_buff_size:\t %d \n", ctx->send_qp_buff_size);
   printf("send_rcredit:\t %d \n", ctx->send_rcredit);
   printf("size:\t %d \n", ctx->size);
+}
+
+int run_write(rdma_context *ctx, rdma_parameter *user_param) {
+  int ne;
+  int err = 0;
+  struct ibv_wc wc;
+
+  ctx->wr[0].sg_list->length = user_param->size;
+  ctx->wr[0].send_flags = IBV_SEND_SIGNALED;
+
+  if (user_param->size <= user_param->inline_size) {
+    ctx->wr[0].send_flags |= IBV_SEND_INLINE;
+  }
+
+  err = post_send_method(ctx, 0, user_param);
+
+  if (err) {
+    fprintf(stderr, "Couldn't post send\n");
+    return 1;
+  }
+
+  do {
+    ne = ibv_poll_cq(ctx->send_cq, 1, &wc);
+  } while (ne == 0);
+
+  if (ne > 0) {
+    if (wc.status != IBV_WC_SUCCESS) {
+      // coverity[uninit_use_in_call]
+      NOTIFY_COMP_ERROR_SEND(wc, 0, 0);
+      return 1;
+    }
+  } else if (ne < 0) {
+    fprintf(stderr, "poll CQ failed %d\n", ne);
+    return FAILURE;
+  }
+  return 0;
 }
 
 int run_iter_lat_write(rdma_context *ctx, rdma_parameter *user_param) {
