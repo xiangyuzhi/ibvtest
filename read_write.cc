@@ -4,23 +4,17 @@ void rdma_write(
     rdma_context *ctx, rdma_parameter *user_param,
     struct message_context *rem_dest) {
   std::string tst = "hello_zhixiangxiang";
-  user_param->size = 19;
-  user_param->verb = WRITE;
+  uint32_t len = tst.size();
 
   char *ans = (char *)ctx->buf[0];
-  for (int i = 0; i < user_param->size; i++) {
+  for (int i = 0; i < len; i++) {
     ans[i] = tst[i];
   }
-  //   for (int i = 0; i < user_param->size; i++) {
-  //     printf("%c", ans[i]);
-  //   }
-  //   printf("\n");
-  for (int i = 0; i < user_param->size; i++) {
+  for (int i = 0; i < len; i++) {
     printf("%d", ans[i]);
   }
   printf("\n");
-  ctx_set_send_wqes(ctx, user_param, rem_dest);
-  run_write(ctx, user_param);
+  run_write(ctx, len);
 }
 
 void rdma_read(
@@ -169,6 +163,7 @@ int main(int argc, char *argv[]) {
   }
 
   // write api
+  write_init(&ctx, &user_param, rem_dest);
   rdma_write(&ctx, &user_param, rem_dest);
 
   // read api
