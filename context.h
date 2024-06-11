@@ -461,7 +461,9 @@ int create_single_mr(
 
   if (user_param->verb == WRITE || user_param->verb == WRITE_IMM) {
     flags |= IBV_ACCESS_REMOTE_WRITE;
+    flags |= IBV_ACCESS_REMOTE_READ;
   } else if (user_param->verb == READ) {
+    flags |= IBV_ACCESS_REMOTE_WRITE;
     flags |= IBV_ACCESS_REMOTE_READ;
     if (user_param->transport_type == IBV_TRANSPORT_IWARP)
       flags |= IBV_ACCESS_REMOTE_WRITE;
@@ -499,7 +501,6 @@ int create_single_mr(
 }
 
 int create_mr(rdma_context *ctx, rdma_parameter *user_param) {
-  int i;
   int mr_index = 0;
 
   /* create first MR */
@@ -510,17 +511,16 @@ int create_mr(rdma_context *ctx, rdma_parameter *user_param) {
   mr_index++;
 
   /* create the rest if needed, or copy the first one */
-  for (i = 1; i < user_param->num_of_qps; i++) {
+  for (int i = 1; i < user_param->num_of_qps; i++) {
     ctx->mr[i] = ctx->mr[0];
     // cppcheck-suppress arithOperationsOnVoidPointer
     ctx->buf[i] =
         (char *)ctx->buf[0] + (i * BUFF_SIZE(ctx->size, ctx->cycle_buffer));
   }
-
   return 0;
 
 destroy_mr:
-  for (i = 0; i < mr_index; i++) ibv_dereg_mr(ctx->mr[i]);
+  for (int i = 0; i < mr_index; i++) ibv_dereg_mr(ctx->mr[i]);
 
   return FAILURE;
 }
@@ -631,16 +631,15 @@ int ctx_modify_qp_to_init(
       attr.qp_access_flags = IBV_ACCESS_REMOTE_ATOMIC;
       break;
     case READ:
-      attr.qp_access_flags = IBV_ACCESS_REMOTE_READ;
+      attr.qp_access_flags = IBV_ACCESS_REMOTE_READ | IBV_ACCESS_REMOTE_WRITE;
       break;
     case WRITE_IMM:
     case WRITE:
-      attr.qp_access_flags = IBV_ACCESS_REMOTE_WRITE;
+      attr.qp_access_flags = IBV_ACCESS_REMOTE_WRITE | IBV_ACCESS_REMOTE_READ;
       break;
     case SEND:
       attr.qp_access_flags = IBV_ACCESS_REMOTE_WRITE | IBV_ACCESS_LOCAL_WRITE;
   }
-  flags |= IBV_QP_ACCESS_FLAGS;
   flags |= IBV_QP_ACCESS_FLAGS;
   ret = ibv_modify_qp(qp, &attr, flags);
 

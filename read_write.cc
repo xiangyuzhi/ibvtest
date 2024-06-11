@@ -1,5 +1,33 @@
 #include "communication.h"
 
+void rdma_write(
+    rdma_context *ctx, rdma_parameter *user_param,
+    struct message_context *rem_dest) {
+  std::string tst = "hello_zhixiangxiang";
+  user_param->size = tst.size();
+  user_param->verb = WRITE;
+
+  ctx_set_send_wqes(ctx, user_param, rem_dest);
+  run_iter_lat_write(ctx, user_param);
+}
+
+void rdma_read(
+    rdma_context *ctx, rdma_parameter *user_param,
+    struct message_context *rem_dest) {
+  std::string tst = "hello_zhixiangxiang";
+  user_param->size = tst.size();
+  user_param->verb = READ;
+
+  ctx_set_send_wqes(ctx, user_param, rem_dest);
+  run_iter_lat(ctx, user_param);
+
+  char *ans = (char *)ctx->buf[0];
+  printf("ans\n");
+  for (int i = 0; i < user_param->size; i++) {
+    printf("%c", ans[i]);
+  }
+}
+
 int main(int argc, char *argv[]) {
   printf("This is the concise version of perftest.\n");
 
@@ -9,8 +37,8 @@ int main(int argc, char *argv[]) {
     printf("Failed to parser parameter.\n");
     exit(0);
   }
-  user_param.verb = READ;
-  // user_param.verb = WRITE;
+  //   user_param.verb = READ;
+  user_param.verb = WRITE;
 
   force_dependecies(&user_param);
 
@@ -127,28 +155,32 @@ int main(int argc, char *argv[]) {
     return SUCCESS;
   }
 
-  printf(RESULT_LINE);
-  printf("%s", RESULT_FMT_LAT);
-  printf(RESULT_EXT);
+  // write api
+  rdma_write(&ctx, &user_param, rem_dest);
 
-  ctx_set_send_wqes(&ctx, &user_param, rem_dest);
+  // read api
+  rdma_read(&ctx, &user_param, rem_dest);
+
+  //   printf(RESULT_LINE);
+  //   printf("%s", RESULT_FMT_LAT);
+  //   printf(RESULT_EXT);
 
   // user_param.print_para();
   // print_ctx(&ctx);
 
-  for (int i = 1; i < 24; ++i) {
-    user_param.size = (uint64_t)1 << i;
-    if (user_param.verb == READ) {
-      if (run_iter_lat(&ctx, &user_param)) {
-        goto free_mem;
-      }
-    } else if (user_param.verb == WRITE) {
-      if (run_iter_lat_write(&ctx, &user_param)) {
-        goto free_mem;
-      }
-    }
-    print_report_lat(&user_param);
-  }
+  //   for (int i = 1; i < 24; ++i) {
+  //     user_param.size = (uint64_t)1 << i;
+  //     if (user_param.verb == READ) {
+  //       if (run_iter_lat(&ctx, &user_param)) {
+  //         goto free_mem;
+  //       }
+  //     } else if (user_param.verb == WRITE) {
+  //       if (run_iter_lat_write(&ctx, &user_param)) {
+  //         goto free_mem;
+  //       }
+  //     }
+  //     print_report_lat(&user_param);
+  //   }
 
   if (ctx_close_connection(&user_comm, my_dest, rem_dest)) {
     fprintf(stderr, "Failed to close connection between server and client\n");
