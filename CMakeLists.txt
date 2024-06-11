@@ -9,7 +9,7 @@ include_directories("${PROJECT_SOURCE_DIR}" "/home/atr/local/include/")
 SET(CMAKE_CXX_FLAGS  "-Ofast -lrt -std=c++11 -DHAVE_CXX0X -march=native -fpic -fopenmp -ftree-vectorize -w -ftree-vectorizer-verbose=0")
 
 add_executable(read utils/get_clock.cc read_latency.cc )
-
+add_executable(rw utils/get_clock.cc read_write.cc )
 
 
 

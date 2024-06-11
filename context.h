@@ -691,40 +691,6 @@ int ctx_init(rdma_context *ctx, rdma_parameter *user_param) {
     goto mr;
   }
 
-  // if (user_param->use_srq && user_param->connection_type == DC &&
-  //     (user_param->tst == LAT || user_param->machine == SERVER ||
-  //      user_param->duplex == ON)) {
-  //   struct ibv_srq_init_attr_ex attr;
-  //   memset(&attr, 0, sizeof(attr));
-  //   attr.comp_mask = IBV_SRQ_INIT_ATTR_TYPE | IBV_SRQ_INIT_ATTR_PD;
-  //   attr.attr.max_wr = user_param->rx_depth;
-  //   attr.attr.max_sge = 1;
-  //   attr.pd = ctx->pd;
-
-  //   attr.srq_type = IBV_SRQT_BASIC;
-  //   ctx->srq = ibv_create_srq_ex(ctx->context, &attr);
-  //   if (!ctx->srq) {
-  //     fprintf(stderr, "Couldn't create SRQ\n");
-  //     goto xrc_srq;
-  //   }
-  // }
-
-  // if (user_param->use_srq && user_param->connection_type != DC &&
-  //     !user_param->use_xrc &&
-  //     (user_param->tst == LAT || user_param->machine == SERVER ||
-  //      user_param->duplex == ON)) {
-
-  //   struct ibv_srq_init_attr attr = {
-  //       .attr = {/* when using sreq, rx_depth sets the max_wr */
-  //                .max_wr = user_param->rx_depth,
-  //                .max_sge = 1}};
-  //   ctx->srq = ibv_create_srq(ctx->pd, &attr);
-  //   if (!ctx->srq) {
-  //     fprintf(stderr, "Couldn't create SRQ\n");
-  //     goto xrcd;
-  //   }
-  // }
-
   /*
    * QPs creation in RDMA CM flow will be done separately.
    * Unless, the function called with RDMA CM connection contexts,
@@ -842,7 +808,7 @@ int ctx_connect(
   return SUCCESS;
 }
 
-void ctx_set_send_reg_wqes(
+void ctx_set_send_wqes(
     rdma_context *ctx, rdma_parameter *user_param,
     struct message_context *rem_dest) {
   int i, j;
@@ -899,15 +865,8 @@ void ctx_set_send_reg_wqes(
       if ((user_param->verb == WRITE) &&
           user_param->size <= user_param->inline_size)
         ctx->wr[i * user_param->post_list + j].send_flags |= IBV_SEND_INLINE;
-      printf("flags %d\n", ctx->wr[i * user_param->post_list + j].send_flags);
     }
   }
-}
-
-void ctx_set_send_wqes(
-    rdma_context *ctx, rdma_parameter *user_param,
-    struct message_context *rem_dest) {
-  ctx_set_send_reg_wqes(ctx, user_param, rem_dest);
 }
 
 static inline int post_send_method(
