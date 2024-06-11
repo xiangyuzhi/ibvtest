@@ -85,11 +85,7 @@ uint16_t ctx_get_local_lid(struct ibv_context *context, int port) {
 int set_up_connection(
     rdma_context *ctx, rdma_parameter *user_param,
     struct message_context *my_dest) {
-  int num_of_qps = user_param->num_of_qps;
-  int num_of_qps_per_port = user_param->num_of_qps / 2;
-  int i;
   union ibv_gid temp_gid;
-  union ibv_gid temp_gid2;
   struct ibv_port_attr attr;
 
   srand48(getpid() * time(NULL));
@@ -106,7 +102,7 @@ int set_up_connection(
       return -1;
   }
 
-  for (i = 0; i < user_param->num_of_qps; i++) {
+  for (int i = 0; i < user_param->num_of_qps; i++) {
     /*single-port case*/
     my_dest[i].lid = ctx_get_local_lid(ctx->context, user_param->ib_port);
     my_dest[i].gid_index = user_param->gid_index;
