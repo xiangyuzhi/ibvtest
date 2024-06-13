@@ -19,12 +19,14 @@ void rdma_read(rdma_context *ctx) {
   std::string tst = "hello_zhixiangxiang";
   uint32_t len = tst.size();
 
-  run_read(ctx, len);
+  len = 10;
 
-  char *ans = (char *)ctx->buf[0];
+  run_read(ctx, len * 4);
+
+  int *ans = (int *)ctx->buf[0];
   printf("ans %d\n", len);
   for (int i = 0; i < len; i++) {
-    printf("%d", ans[i]);
+    printf("%d ", ans[i]);
   }
   printf("\n");
 }
@@ -47,8 +49,8 @@ int main(int argc, char *argv[]) {
   com_init(ctx, user_param, user_comm, my_dest, rem_dest);
 
   // write api
-  write_init(&ctx, &user_param, rem_dest);
-  rdma_write(&ctx);
+  // write_init(&ctx, &user_param, rem_dest);
+  // rdma_write(&ctx);
 
   // read api
   read_init(&ctx, &user_param, rem_dest);

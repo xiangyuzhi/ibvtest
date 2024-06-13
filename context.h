@@ -498,6 +498,15 @@ int create_single_mr(
         ((char *)ctx->buf[qp_index])[i] = (char)rand();
       }
     }
+
+    if (user_param->machine == SERVER) {
+      printf("server data init\n");
+      uint64_t i;
+      for (i = 0; i < 100; i++) {
+        ((int *)ctx->buf[qp_index])[i] = i + 1574334354;
+      }
+    } else {
+    }
   }
   return SUCCESS;
 }
@@ -811,7 +820,7 @@ void ctx_set_send_wqes(
 
   for (i = 0; i < num_of_qps; i++) {
     memset(&ctx->wr[i * user_param->post_list], 0, sizeof(struct ibv_send_wr));
-    ctx->sge_list[i * user_param->post_list].addr = (uintptr_t)ctx->buf[i];
+    ctx->sge_list[i * user_param->post_list].addr = (uint64_t)ctx->buf[i];
 
     ctx->wr[i * user_param->post_list].wr.rdma.remote_addr =
         rem_dest[xrc_offset + i].vaddr;
@@ -866,7 +875,7 @@ void read_init(
     rdma_context *ctx, rdma_parameter *user_param,
     struct message_context *rem_dest) {
   memset(&ctx->wr[0], 0, sizeof(struct ibv_send_wr));
-  ctx->sge_list[0].addr = (uintptr_t)ctx->buf[0];
+  ctx->sge_list[0].addr = (uint64_t)ctx->buf[0];
   ctx->wr[0].wr.rdma.remote_addr = rem_dest[0].vaddr;
   ctx->sge_list[0].length = user_param->size;
   ctx->sge_list[0].lkey = ctx->mr[0]->lkey;
@@ -965,6 +974,7 @@ int run_iter_lat(rdma_context *ctx, rdma_parameter *user_param) {
   ctx->wr[0].sg_list->length = user_param->size;
   ctx->wr[0].send_flags = IBV_SEND_SIGNALED;
 
+  user_param->iters = 1;
   while (scnt < user_param->iters) {
     user_param->tposted[scnt++] = get_cycles();
 
@@ -990,6 +1000,12 @@ int run_iter_lat(rdma_context *ctx, rdma_parameter *user_param) {
       }
 
     } while (ne == 0);
+
+    int *buff = (int *)ctx->buf[0];
+    for (int i = 0; i < 10; i++) {
+      printf("%d ", buff[i]);
+    }
+    printf("\n");
   }
 
   return 0;
