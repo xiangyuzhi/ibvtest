@@ -974,7 +974,7 @@ int run_iter_lat(rdma_context *ctx, rdma_parameter *user_param) {
   ctx->wr[0].sg_list->length = user_param->size;
   ctx->wr[0].send_flags = IBV_SEND_SIGNALED;
 
-  user_param->iters = 1;
+  // user_param->iters = 1;
   while (scnt < user_param->iters) {
     user_param->tposted[scnt++] = get_cycles();
 
@@ -1001,11 +1001,11 @@ int run_iter_lat(rdma_context *ctx, rdma_parameter *user_param) {
 
     } while (ne == 0);
 
-    int *buff = (int *)ctx->buf[0];
-    for (int i = 0; i < 10; i++) {
-      printf("%d ", buff[i]);
-    }
-    printf("\n");
+    //int *buff = (int *)ctx->buf[0];
+    //for (int i = 0; i < 10; i++) {
+    //  printf("%d ", buff[i]);
+    //}
+    //printf("\n");
   }
 
   return 0;

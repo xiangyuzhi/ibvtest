@@ -159,6 +159,7 @@ class rdma_parameter {
   rdma_parameter() {
     port = DEF_PORT;
     ib_port = DEF_IB_PORT;
+    mtu = 0;
     size = DEF_SIZE_LAT;
     req_size = 0;
     dct_key = 0;
@@ -181,6 +182,8 @@ class rdma_parameter {
     cq_mod = DEF_CQ_MOD;
     cpu_freq_f = ON;
     req_cq_mod = 0;
+    servername = NULL;
+    ib_devname = NULL;
   }
 
   void force_dependecies() {
